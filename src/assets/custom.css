@@ -1,0 +1,180 @@
+/* Estilos personalizados para Lavadero AL */
+:root {
+  --primary-color: #0d6efd;
+  --secondary-color: #6c757d;
+  --success-color: #198754;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #0dcaf0;
+  --dark-color: #212529;
+  --light-color: #f8f9fa;
+  --border-radius: 8px;
+}
+
+body {
+  background-color: #f5f7fa;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Tarjetas personalizadas */
+.card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  background-color: white;
+  border-bottom: 2px solid #e9ecef;
+  font-weight: 600;
+}
+
+/* Botones personalizados */
+.btn {
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Tablas personalizadas */
+.table {
+  background-color: white;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.table thead th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: #495057;
+}
+
+.table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Badges personalizados */
+.badge {
+  padding: 0.4rem 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+/* Formularios */
+.form-control,
+.form-select {
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  padding: 0.6rem 0.75rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Métricas del Dashboard */
+.metric-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.metric-card.blue {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+}
+
+.metric-card.green {
+  background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+}
+
+.metric-card.orange {
+  background: linear-gradient(135deg, #fd7e14 0%, #dc6502 100%);
+}
+
+.metric-card.red {
+  background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+/* Modales */
+.modal-content {
+  border-radius: var(--border-radius);
+  border: none;
+}
+
+.modal-header {
+  border-bottom: 2px solid #e9ecef;
+}
+
+.modal-footer {
+  border-top: 2px solid #e9ecef;
+}
+
+/* Iconos de estado */
+.status-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.status-icon.active {
+  background-color: #198754;
+}
+
+.status-icon.inactive {
+  background-color: #dc3545;
+}
+
+.status-icon.pending {
+  background-color: #ffc107;
+}
