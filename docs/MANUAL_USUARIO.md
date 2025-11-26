@@ -596,4 +596,4 @@ Cuando contactes soporte, proporciona:
 Si tienes sugerencias para mejorar este manual, por favor contáctanos.
 
 **Versión del Manual:** 1.0.0
-**Última actualización:** Enero 2024
+**Última actualización:** Enero 2025
