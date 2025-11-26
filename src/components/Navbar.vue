@@ -88,35 +88,29 @@
 </template>
 
 <script>
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+
 export default {
   name: 'Navbar',
-  data() {
-    return {
-      nombreUsuario: 'Usuario'
+  setup() {
+    const authStore = useAuthStore()
+    const router = useRouter()
+
+    // Usamos computed para que sea reactivo a cambios en el store
+    const nombreUsuario = computed(() => authStore.user?.username || 'Usuario')
+
+    const logout = () => {
+      if (confirm('¿Cerrar sesión?')) {
+        authStore.logout()
+        // La redirección ya la maneja el store o el router guard
+      }
     }
-  },
-  mounted() {
-    this.cargarUsuario()
-  },
-  methods: {
-    cargarUsuario() {
-      try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-          const user = JSON.parse(userStr)
-          this.nombreUsuario = user.username || user.nombre || 'Usuario'
-        }
-      } catch (error) {
-        console.error('Error al cargar usuario:', error)
-        this.nombreUsuario = 'Usuario'
-      }
-    },
-    logout() {
-      if (confirm('¿Está seguro de que desea cerrar sesión?')) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        this.$router.push('/login')
-      }
+
+    return {
+      nombreUsuario,
+      logout
     }
   }
 }

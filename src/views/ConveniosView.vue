@@ -38,7 +38,13 @@
 
     <div class="card shadow-sm">
       <div class="card-body p-0">
-        <div class="table-responsive">
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-border text-primary"></div>
+        </div>
+
+        <div v-else-if="error" class="alert alert-danger m-3">{{ error }}</div>
+
+        <div v-else class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="bg-light">
               <tr>
@@ -162,7 +168,7 @@
               <div v-if="!form.id">
                 <h6 class="text-primary border-bottom pb-2 mb-3 d-flex justify-content-between align-items-center">
                   Vehículos Iniciales (Opcional)
-                  <button type="button" class="btn btn-sm btn-outline-success" @click="agregarFilaVehiculo">
+                  <button type="button" class="btn btn-sm btn-outline-success" @click="agregarFilaVehiculoTemp">
                     <i class="bi bi-plus"></i> Agregar Fila
                   </button>
                 </h6>
@@ -283,168 +289,160 @@
   </div>
 </template>
 
-<script>
-import * as bootstrap from 'bootstrap'
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
 import api from '@/services/api'
+import { useApi } from '@/composables/useApi'
+import { useBootstrap } from '@/composables/useBootstrap'
 
-export default {
-  name: 'ConveniosView',
-  data() {
-    return {
-      busqueda: '',
-      filtroEstado: 'activo',
-      convenios: [],
-      
-      // Formulario Principal
-      form: {
-        id: null,
-        nombre_empresa: '',
-        rut_empresa: '',
-        contacto: '',
-        telefono: '',
-        email: '',
-        tipo_descuento: 'porcentaje',
-        valor_descuento: 0,
-        fecha_inicio: '',
-        fecha_termino: '',
-        observaciones: ''
-      },
-      
-      // Vehículos Temporales (Solo para creación masiva)
-      vehiculosTemp: [],
-      
-      // Gestión Modal Vehículos
-      convenioSeleccionado: null,
-      vehiculosLista: [],
-      nuevoVehiculo: { patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' }
-    }
-  },
-  mounted() {
-    this.cargarConvenios();
-  },
-  computed: {
-    conveniosFiltrados() {
-      return this.convenios.filter(c => {
-        const term = this.busqueda.toLowerCase();
-        const matchText = c.nombre_empresa.toLowerCase().includes(term) || c.rut_empresa.includes(term);
-        const matchEst = this.filtroEstado ? c.estado === this.filtroEstado : true;
-        return matchText && matchEst;
-      });
-    }
-  },
-  methods: {
-    async cargarConvenios() {
-      try {
-        const data = await api.getConvenios();
-        // data ya es array (verificado en python)
-        this.convenios = data;
-      } catch (e) { console.error(e); }
-    },
+// 1. Carga de Datos
+const { data: convenios, loading, error, exec: cargarConvenios } = useApi(api.getConvenios)
 
-    // --- CRUD CONVENIO ---
-    abrirModalCrear() {
-      this.limpiarForm();
-      this.vehiculosTemp = [];
-      new bootstrap.Modal(document.getElementById('modalConvenio')).show();
-    },
+// 2. Variables y Estado
+const { showModal, hideModal } = useBootstrap()
+const busqueda = ref('')
+const filtroEstado = ref('activo')
+
+const form = reactive({
+  id: null,
+  nombre_empresa: '',
+  rut_empresa: '',
+  contacto: '',
+  telefono: '',
+  email: '',
+  tipo_descuento: 'porcentaje',
+  valor_descuento: 0,
+  fecha_inicio: '',
+  fecha_termino: '',
+  observaciones: ''
+})
+
+// Vehículos Temporales (Creación masiva)
+const vehiculosTemp = ref([])
+
+// Gestión Modal Vehículos
+const convenioSeleccionado = ref(null)
+const vehiculosLista = ref([])
+const nuevoVehiculo = reactive({ patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' })
+
+// 3. Ciclo de vida
+onMounted(() => {
+  cargarConvenios()
+})
+
+// 4. Computados
+const conveniosFiltrados = computed(() => {
+  if (!convenios.value) return []
+  return convenios.value.filter(c => {
+    const term = busqueda.value.toLowerCase()
+    const matchText = c.nombre_empresa.toLowerCase().includes(term) || c.rut_empresa.includes(term)
+    const matchEst = filtroEstado.value ? c.estado === filtroEstado.value : true
+    return matchText && matchEst
+  })
+})
+
+// 5. Acciones (CRUD Convenio)
+const limpiarForm = () => {
+  Object.assign(form, {
+    id: null, nombre_empresa: '', rut_empresa: '', contacto: '', telefono: '', 
+    email: '', tipo_descuento: 'porcentaje', valor_descuento: 0, 
+    fecha_inicio: new Date().toISOString().split('T')[0], fecha_termino: '', observaciones: ''
+  })
+}
+
+const abrirModalCrear = () => {
+  limpiarForm()
+  vehiculosTemp.value = []
+  showModal('modalConvenio')
+}
+
+const editarConvenio = (c) => {
+  Object.assign(form, c)
+  // Ajuste fechas para input date (YYYY-MM-DD)
+  if(form.fecha_inicio) form.fecha_inicio = form.fecha_inicio.toString().split('T')[0]
+  if(form.fecha_termino) form.fecha_termino = form.fecha_termino.toString().split('T')[0]
+  
+  showModal('modalConvenio')
+}
+
+const guardarConvenio = async () => {
+  try {
+    const payload = { ...form }
     
-    editarConvenio(c) {
-      // Clonar datos para no editar la tabla reactivamente antes de guardar
-      this.form = { ...c };
-      // Ajuste de fechas para input date (YYYY-MM-DD)
-      if(this.form.fecha_inicio) this.form.fecha_inicio = this.form.fecha_inicio.split('T')[0];
-      if(this.form.fecha_termino) this.form.fecha_termino = this.form.fecha_termino.split('T')[0];
+    let idConvenio
+    if (payload.id) {
+      await api.updateConvenio(payload.id, payload)
+      idConvenio = payload.id
+      alert("Convenio actualizado")
+    } else {
+      const res = await api.createConvenio(payload)
+      idConvenio = res.id
       
-      new bootstrap.Modal(document.getElementById('modalConvenio')).show();
-    },
-
-    async guardarConvenio() {
-      try {
-        const payload = { ...this.form };
-        
-        let idConvenio;
-        if (payload.id) {
-          await api.updateConvenio(payload.id, payload);
-          idConvenio = payload.id;
-          alert("Convenio actualizado");
-        } else {
-          const res = await api.createConvenio(payload);
-          idConvenio = res.id;
-          
-          // Guardar vehículos iniciales si existen
-          if (this.vehiculosTemp.length > 0) {
-            for (const v of this.vehiculosTemp) {
-              if (v.patente) await api.addVehiculoConvenio(idConvenio, v);
-            }
-          }
-          alert("Convenio creado exitosamente");
+      // Guardar vehículos iniciales
+      if (vehiculosTemp.value.length > 0) {
+        for (const v of vehiculosTemp.value) {
+          if (v.patente) await api.addVehiculoConvenio(idConvenio, v)
         }
-
-        bootstrap.Modal.getInstance(document.getElementById('modalConvenio')).hide();
-        this.cargarConvenios();
-        
-      } catch (error) {
-        alert("Error: " + (error.response?.data?.detail || error.message));
       }
-    },
-
-    async eliminarConvenio(c) {
-      if(!confirm(`¿Desactivar convenio con ${c.nombre_empresa}?`)) return;
-      try {
-        await api.deleteConvenio(c.id);
-        this.cargarConvenios();
-      } catch(e) { alert("Error al eliminar"); }
-    },
-
-    // --- GESTIÓN VEHÍCULOS ---
-    agregarFilaVehiculo() {
-      this.vehiculosTemp.push({ patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' });
-    },
-
-    async verVehiculos(c) {
-      this.convenioSeleccionado = c;
-      this.nuevoVehiculo = { patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' };
-      try {
-        this.vehiculosLista = await api.getVehiculosConvenio(c.id);
-        new bootstrap.Modal(document.getElementById('modalVehiculos')).show();
-      } catch(e) { console.error(e); }
-    },
-
-    async agregarVehiculoIndividual() {
-      if(!this.nuevoVehiculo.patente) return alert("Falta patente");
-      try {
-        await api.addVehiculoConvenio(this.convenioSeleccionado.id, this.nuevoVehiculo);
-        this.nuevoVehiculo = { patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' };
-        // Recargar lista
-        this.vehiculosLista = await api.getVehiculosConvenio(this.convenioSeleccionado.id);
-        this.cargarConvenios(); // Para actualizar contador en tabla principal
-      } catch (error) {
-        alert("Error: " + (error.response?.data?.detail || "No se pudo agregar"));
-      }
-    },
-
-    async eliminarVehiculo(idVehiculo) {
-      if(!confirm("¿Quitar vehículo del convenio?")) return;
-      try {
-        await api.removeVehiculoConvenio(idVehiculo);
-        this.vehiculosLista = this.vehiculosLista.filter(v => v.id !== idVehiculo);
-        this.cargarConvenios();
-      } catch(e) { alert("Error al quitar vehículo"); }
-    },
-
-    // --- UTILIDADES ---
-    limpiarForm() {
-      this.form = {
-        id: null, nombre_empresa: '', rut_empresa: '', contacto: '', telefono: '', 
-        email: '', tipo_descuento: 'porcentaje', valor_descuento: 0, 
-        fecha_inicio: new Date().toISOString().split('T')[0], fecha_termino: '', observaciones: ''
-      };
-    },
-    formatDate(dateStr) {
-      if(!dateStr) return '-';
-      return new Date(dateStr).toLocaleDateString('es-CO');
+      alert("Convenio creado exitosamente")
     }
+
+    hideModal('modalConvenio')
+    cargarConvenios()
+    
+  } catch (err) {
+    alert("Error: " + (err.response?.data?.detail || err.message))
   }
+}
+
+const eliminarConvenio = async (c) => {
+  if(!confirm(`¿Desactivar convenio con ${c.nombre_empresa}?`)) return
+  try {
+    await api.deleteConvenio(c.id)
+    cargarConvenios()
+  } catch(e) { alert("Error al eliminar") }
+}
+
+// 6. Acciones (Vehículos)
+const agregarFilaVehiculoTemp = () => {
+  vehiculosTemp.value.push({ patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' })
+}
+
+const verVehiculos = async (c) => {
+  convenioSeleccionado.value = c
+  Object.assign(nuevoVehiculo, { patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' })
+  try {
+    vehiculosLista.value = await api.getVehiculosConvenio(c.id)
+    showModal('modalVehiculos')
+  } catch(e) { console.error(e) }
+}
+
+const agregarVehiculoIndividual = async () => {
+  if(!nuevoVehiculo.patente) return alert("Falta patente")
+  try {
+    await api.addVehiculoConvenio(convenioSeleccionado.value.id, nuevoVehiculo)
+    // Reset y recargar
+    Object.assign(nuevoVehiculo, { patente: '', tipo_vehiculo: 'auto', modelo: '', color: '' })
+    vehiculosLista.value = await api.getVehiculosConvenio(convenioSeleccionado.value.id)
+    cargarConvenios() // Actualizar contador
+  } catch (err) {
+    alert("Error: " + (err.response?.data?.detail || "No se pudo agregar"))
+  }
+}
+
+const eliminarVehiculo = async (idVehiculo) => {
+  if(!confirm("¿Quitar vehículo del convenio?")) return
+  try {
+    await api.removeVehiculoConvenio(idVehiculo)
+    vehiculosLista.value = vehiculosLista.value.filter(v => v.id !== idVehiculo)
+    cargarConvenios()
+  } catch(e) { alert("Error al quitar vehículo") }
+}
+
+// Helpers
+const formatDate = (dateStr) => {
+  if(!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('es-CO')
 }
 </script>
 

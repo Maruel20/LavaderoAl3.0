@@ -116,52 +116,52 @@
 </template>
 
 <script>
-import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
+import { reactive, ref } from 'vue'
 
 export default {
   name: 'LoginView',
-  data() {
-    return {
-      formData: {
-        username: '',
-        password: '',
-        rememberMe: false
-      },
-      showPassword: false,
-      isLoading: false,
-      errorMessage: ''
-    }
-  },
-  methods: {
-    async handleLogin() {
-      // Limpiar mensaje de error
-      this.errorMessage = ''
-      this.isLoading = true
+  setup() {
+    const authStore = useAuthStore()
+    const router = useRouter()
+    
+    const formData = reactive({
+      username: '',
+      password: ''
+    })
+    
+    const isLoading = ref(false)
+    const errorMessage = ref('')
+    const showPassword = ref(false)
 
+    const handleLogin = async () => {
+      isLoading.value = true
+      errorMessage.value = ''
+      
       try {
-        const data = await api.login(this.formData.username, this.formData.password)
-
-        if (data.token && data.user) {
-          // Guardar token en localStorage
-          localStorage.setItem('token', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-
-          // Redirigir al dashboard
-          this.$router.push('/dashboard')
-        } else {
-          this.errorMessage = 'Usuario o contraseña incorrectos'
-        }
-
+        // Llamamos a la acción del Store
+        await authStore.login(formData.username, formData.password)
+        // Si no hay error, redirigimos
+        router.push('/dashboard')
       } catch (error) {
-        console.error('Error en login:', error)
-        if (error.response && error.response.status === 401) {
-          this.errorMessage = 'Usuario o contraseña incorrectos'
+        console.error(error)
+        if (error.response?.status === 401) {
+          errorMessage.value = 'Usuario o contraseña incorrectos'
         } else {
-          this.errorMessage = 'Error de conexión. Intente nuevamente.'
+          errorMessage.value = 'Error de conexión'
         }
       } finally {
-        this.isLoading = false
+        isLoading.value = false
       }
+    }
+
+    return {
+      formData,
+      isLoading,
+      errorMessage,
+      showPassword,
+      handleLogin
     }
   }
 }

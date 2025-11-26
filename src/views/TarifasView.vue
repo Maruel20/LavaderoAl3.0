@@ -5,17 +5,21 @@
         <h2 class="mb-1">Configuración de Tarifas</h2>
         <p class="text-muted">Gestiona los precios por vehículo y servicio (Sincronizado con BD)</p>
       </div>
-      <button class="btn btn-outline-primary btn-sm" @click="cargarTarifas" :disabled="cargando">
-        <i class="bi bi-arrow-clockwise" :class="{ 'spin': cargando }"></i> Refrescar
+      <button class="btn btn-outline-primary btn-sm" @click="recargarTarifas" :disabled="loading">
+        <i class="bi bi-arrow-clockwise" :class="{ 'spin': loading }"></i> Refrescar
       </button>
     </div>
 
     <div class="card shadow-sm">
       <div class="card-body">
-        <div v-if="cargando" class="text-center py-5">
+        <div v-if="loading" class="text-center py-5">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando...</span>
           </div>
+        </div>
+
+        <div v-else-if="error" class="alert alert-danger m-3">
+          <i class="bi bi-exclamation-triangle me-2"></i> {{ error }}
         </div>
 
         <div v-else class="table-responsive">
@@ -33,7 +37,7 @@
             </thead>
             <tbody>
               <tr v-for="tarifa in tarifasProcesadas" :key="tarifa.tipoVehiculo">
-                <td class="fw-bold">{{ tarifa.tipoVehiculo }}</td>
+                <td class="fw-bold text-capitalize">{{ tarifa.tipoVehiculo }}</td>
                 
                 <td>
                   <div class="input-group input-group-sm">
@@ -93,7 +97,7 @@
           </table>
         </div>
         
-        <div v-if="!cargando && tarifasProcesadas.length === 0" class="alert alert-warning mt-3">
+        <div v-if="!loading && tarifasProcesadas.length === 0" class="alert alert-warning mt-3">
           <i class="bi bi-exclamation-triangle"></i> No se encontraron tarifas. Revisa la base de datos.
         </div>
       </div>
@@ -101,84 +105,67 @@
   </div>
 </template>
 
-<script>
-// Importamos el objeto 'api' que contiene tus funciones (getTarifas, updateTarifa, etc.)
-import api from '@/services/api' 
+<script setup>
+import { ref, onMounted } from 'vue'
+import api from '@/services/api'
+import { useApi } from '@/composables/useApi'
 
-export default {
-  name: 'TarifasView',
-  data() {
-    return {
-      tarifasProcesadas: [],
-      cargando: false
-    }
-  },
-  async mounted() {
-    await this.cargarTarifas();
-  },
-  methods: {
-    async cargarTarifas() {
-      this.cargando = true;
-      try {
-        // CORRECCIÓN: Usamos la función definida en tu api.js
-        const datos = await api.getTarifas(); 
-        
-        // En api.js ya retornas 'response.data', así que 'datos' es el array directo
-        this.transformarDatos(datos);
-        
-      } catch (error) {
-        console.error('Error cargando tarifas:', error);
-      } finally {
-        this.cargando = false;
-      }
-    },
+// 1. Estado local
+const tarifasProcesadas = ref([])
 
-    transformarDatos(listaPlana) {
-      if (!Array.isArray(listaPlana)) {
-        console.error("Formato de datos incorrecto recibido del servidor");
-        return;
-      }
+// 2. Función para cargar y transformar datos
+const cargarDatos = async () => {
+  const res = await api.getTarifas()
+  const listaPlana = res.data || res
 
-      const agrupado = {};
+  if (!Array.isArray(listaPlana)) return []
 
-      listaPlana.forEach(item => {
-        const vehiculo = item.tipo_vehiculo;
-        
-        if (!agrupado[vehiculo]) {
-          agrupado[vehiculo] = {
-            tipoVehiculo: vehiculo,
-            // Valores iniciales alineados con BD
-            lavado_simple: 0,
-            lavado_completo: 0,
-            encerado: 0,
-            lavado_motor: 0,
-            pulido: 0,
-            descontaminacion: 0
-          };
-        }
+  const agrupado = {}
 
-        if (item.tipo_servicio) {
-            agrupado[vehiculo][item.tipo_servicio] = item.precio;
-        }
-      });
-
-      this.tarifasProcesadas = Object.values(agrupado);
-    },
-
-    async actualizarPrecio(tipoVehiculo, tipoServicio, nuevoPrecio) {
-      if (nuevoPrecio < 0) return;
-
-      try {
-        // CORRECCIÓN: Usamos la función definida en tu api.js
-        // updateTarifa(tipoVehiculo, tipoServicio, precio)
-        await api.updateTarifa(tipoVehiculo, tipoServicio, parseFloat(nuevoPrecio));
-        
-        console.log(`✅ Guardado: ${tipoVehiculo} -> ${tipoServicio}: ${nuevoPrecio}`);
-      } catch (error) {
-        console.error('Error al guardar:', error);
-        alert('Error al guardar el cambio. Verifica tu conexión.');
+  listaPlana.forEach(item => {
+    const vehiculo = item.tipo_vehiculo
+    
+    if (!agrupado[vehiculo]) {
+      agrupado[vehiculo] = {
+        tipoVehiculo: vehiculo,
+        // Valores iniciales por si faltan en BD
+        lavado_simple: 0,
+        lavado_completo: 0,
+        encerado: 0,
+        lavado_motor: 0,
+        pulido: 0,
+        descontaminacion: 0
       }
     }
+
+    if (item.tipo_servicio) {
+      agrupado[vehiculo][item.tipo_servicio] = item.precio
+    }
+  })
+
+  tarifasProcesadas.value = Object.values(agrupado)
+  return tarifasProcesadas.value
+}
+
+// 3. Usar Composable
+const { loading, error, exec: recargarTarifas } = useApi(cargarDatos)
+
+// 4. Ciclo de vida
+onMounted(() => {
+  recargarTarifas()
+})
+
+// 5. Acciones (Actualización)
+const actualizarPrecio = async (tipoVehiculo, tipoServicio, nuevoPrecio) => {
+  if (nuevoPrecio < 0) return
+
+  try {
+    // Llamada directa sin useApi para no bloquear toda la tabla con loading global
+    await api.updateTarifa(tipoVehiculo, tipoServicio, parseFloat(nuevoPrecio))
+    console.log(`✅ Precio actualizado: ${tipoVehiculo} - ${tipoServicio}`)
+  } catch (e) {
+    console.error('Error al guardar:', e)
+    alert('Error al guardar el cambio. Verifica tu conexión.')
   }
 }
 </script>

@@ -9,7 +9,7 @@
         <p class="text-muted">Gestiona pagos, comisiones y nómina</p>
       </div>
       <div class="col-auto">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalLiquidacion">
+        <button class="btn btn-primary" @click="abrirModalCrear">
           <i class="bi bi-calculator me-2"></i>
           Nueva Liquidación
         </button>
@@ -43,7 +43,7 @@
         <div class="card border-start border-4 border-primary h-100">
           <div class="card-body">
             <h6 class="text-muted mb-1 text-uppercase small">Total Liquidaciones</h6>
-            <h3 class="mb-0">{{ liquidaciones.length }}</h3>
+            <h3 class="mb-0">{{ liquidaciones?.length || 0 }}</h3>
           </div>
         </div>
       </div>
@@ -59,7 +59,7 @@
         <div class="card border-start border-4 border-success h-100">
           <div class="card-body">
             <h6 class="text-muted mb-1 text-uppercase small">Pagadas</h6>
-            <h3 class="mb-0 text-success">{{ liquidaciones.length - pendientesCount }}</h3>
+            <h3 class="mb-0 text-success">{{ (liquidaciones?.length || 0) - pendientesCount }}</h3>
           </div>
         </div>
       </div>
@@ -75,11 +75,13 @@
 
     <div class="card shadow-sm">
       <div class="card-body p-0">
-        <div v-if="cargando" class="text-center py-5">
+        <div v-if="loading" class="text-center py-5">
           <div class="spinner-border text-primary" role="status"></div>
           <p class="mt-2 text-muted">Cargando datos...</p>
         </div>
         
+        <div v-else-if="error" class="alert alert-danger m-3">{{ error }}</div>
+
         <div v-else class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="bg-light">
@@ -99,34 +101,34 @@
               <tr v-for="liq in liquidacionesFiltradas" :key="liq.id">
                 <td class="ps-3 text-muted">#{{ liq.id }}</td>
                 <td>
-                  <div class="fw-bold text-dark">{{ liq.empleado }}</div>
+                  <div class="fw-bold text-dark">{{ liq.nombre_empleado }}</div>
                   <small class="text-muted" style="font-size: 0.8rem;">{{ liq.rut }}</small>
                 </td>
                 <td>
-                  <small>{{ formatDate(liq.periodoInicio) }} <br> {{ formatDate(liq.periodoFin) }}</small>
+                  <small>{{ formatDate(liq.periodo_inicio) }} <br> {{ formatDate(liq.periodo_fin) }}</small>
                 </td>
                 <td class="text-center">
-                   <span class="badge bg-secondary rounded-pill">{{ liq.cantidadServicios }}</span>
+                   <span class="badge bg-secondary rounded-pill">{{ liq.total_servicios }}</span>
                 </td>
-                <td class="text-end text-muted">${{ liq.totalServicios.toLocaleString() }}</td>
-                <td class="text-center">{{ liq.porcentajeComision }}%</td>
-                <td class="text-end fw-bold text-success fs-6">${{ liq.totalComision.toLocaleString() }}</td>
+                <td class="text-end text-muted">${{ liq.monto_total_servicios?.toLocaleString() }}</td>
+                <td class="text-center">{{ liq.porcentaje_comision }}%</td>
+                <td class="text-end fw-bold text-success fs-6">${{ liq.total_comisiones?.toLocaleString() }}</td>
                 <td class="text-center">
-                  <span :class="'badge rounded-pill bg-' + (liq.estado === 'Pagada' ? 'success' : 'warning text-dark')">
-                    {{ liq.estado }}
+                  <span :class="'badge rounded-pill bg-' + (liq.estado === 'pagada' ? 'success' : 'warning text-dark')">
+                    {{ liq.estado === 'pagada' ? 'Pagada' : 'Pendiente' }}
                   </span>
                 </td>
                 <td class="text-end pe-3">
                   <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary" @click="verDetalle(liq)" data-bs-toggle="modal" data-bs-target="#modalDetalleLiquidacion" title="Ver Detalle">
+                    <button class="btn btn-outline-primary" @click="verDetalle(liq)" title="Ver Detalle">
                       <i class="bi bi-eye"></i>
                     </button>
                     
-                    <button v-if="liq.estado === 'Pendiente'" class="btn btn-outline-success" @click="marcarPagada(liq)" title="Marcar como Pagada">
+                    <button v-if="liq.estado === 'pendiente'" class="btn btn-outline-success" @click="marcarPagada(liq)" title="Marcar como Pagada">
                       <i class="bi bi-check-lg"></i>
                     </button>
 
-                    <button v-if="liq.estado === 'Pendiente'" class="btn btn-outline-danger" @click="eliminarLiquidacion(liq)" title="Eliminar Registro">
+                    <button v-if="liq.estado === 'pendiente'" class="btn btn-outline-danger" @click="eliminarLiquidacion(liq)" title="Eliminar Registro">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -172,15 +174,12 @@
               <div class="alert alert-info d-flex align-items-center small">
                 <i class="bi bi-info-circle fs-4 me-2"></i>
                 <div>
-                  El sistema calculará automáticamente las comisiones sumando los servicios "completados" en este rango de fechas.
+                  El sistema calculará automáticamente las comisiones sumando los servicios "completados" en este rango.
                 </div>
               </div>
               <div class="modal-footer px-0 pb-0 border-top-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-primary" :disabled="procesando">
-                  <span v-if="procesando" class="spinner-border spinner-border-sm me-1"></span>
-                  Generar
-                </button>
+                <button type="submit" class="btn btn-primary">Generar</button>
               </div>
             </form>
           </div>
@@ -200,15 +199,15 @@
               <div class="card-body">
                 <div class="row align-items-center">
                   <div class="col-md-6">
-                    <h5 class="fw-bold mb-1">{{ liquidacionSeleccionada.empleado }}</h5>
+                    <h5 class="fw-bold mb-1">{{ liquidacionSeleccionada.nombre_empleado }}</h5>
                     <p class="text-muted mb-0">{{ liquidacionSeleccionada.rut }}</p>
                     <small class="text-primary">{{ liquidacionSeleccionada.email }}</small>
                   </div>
                   <div class="col-md-6 text-md-end mt-3 mt-md-0">
                     <div class="text-muted small">Total a Pagar</div>
-                    <h2 class="text-success fw-bold mb-0">${{ liquidacionSeleccionada.totalComision?.toLocaleString() }}</h2>
-                    <span :class="'badge mt-2 bg-' + (liquidacionSeleccionada.estado === 'Pagada' ? 'success' : 'warning text-dark')">
-                      {{ liquidacionSeleccionada.estado }}
+                    <h2 class="text-success fw-bold mb-0">${{ liquidacionSeleccionada.total_comisiones?.toLocaleString() }}</h2>
+                    <span :class="'badge mt-2 bg-' + (liquidacionSeleccionada.estado === 'pagada' ? 'success' : 'warning text-dark')">
+                      {{ liquidacionSeleccionada.estado === 'pagada' ? 'Pagada' : 'Pendiente' }}
                     </span>
                   </div>
                 </div>
@@ -254,153 +253,107 @@
   </div>
 </template>
 
-<script>
-import * as bootstrap from 'bootstrap'
-import api from '@/services/api' // Asegúrate de que la ruta sea correcta
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '@/services/api'
+import { useApi } from '@/composables/useApi'
+import { useBootstrap } from '@/composables/useBootstrap'
 
-export default {
-  name: 'LiquidacionesView',
-  data() {
-    return {
-      cargando: false,
-      procesando: false,
-      empleados: [],
-      liquidaciones: [],
-      detalleServicios: [],
-      filtros: { empleado: '', estado: '' },
-      nuevaLiquidacion: {
-        id_empleado: '',
-        periodo_inicio: '',
-        periodo_fin: ''
-      },
-      liquidacionSeleccionada: {}
-    }
-  },
-  computed: {
-    liquidacionesFiltradas() {
-      return this.liquidaciones.filter(l => {
-        const matchEmp = this.filtros.empleado ? l.empleado === this.filtros.empleado : true;
-        const matchEst = this.filtros.estado ? l.estado === this.filtros.estado : true;
-        return matchEmp && matchEst;
-      });
-    },
-    pendientesCount() {
-      return this.liquidaciones.filter(l => l.estado === 'Pendiente').length;
-    },
-    totalPendiente() {
-      return this.liquidaciones
-        .filter(l => l.estado === 'Pendiente')
-        .reduce((sum, l) => sum + l.totalComision, 0);
-    }
-  },
-  async mounted() {
-    await this.cargarEmpleados();
-    await this.cargarLiquidaciones();
-  },
-  methods: {
-    async cargarEmpleados() {
-      try {
-        const data = await api.getEmpleados();
-        this.empleados = data;
-      } catch (e) { console.error("Error empleados", e); }
-    },
-    async cargarLiquidaciones() {
-      this.cargando = true;
-      try {
-        const data = await api.getLiquidaciones();
-        // Mapeo EXACTO con los nombres que vienen de Python (snake_case a camelCase si quieres, o directo)
-        this.liquidaciones = data.map(l => ({
-          id: l.id,
-          empleado: l.nombre_empleado,
-          rut: l.rut,
-          email: l.email, // Si viene en el get all (a veces no, check query)
-          periodoInicio: l.periodo_inicio,
-          periodoFin: l.periodo_fin,
-          cantidadServicios: l.total_servicios,
-          totalServicios: l.monto_total_servicios,
-          porcentajeComision: l.porcentaje_comision, // Ahora sí existe
-          totalComision: l.total_comisiones,
-          estado: l.estado === 'pendiente' ? 'Pendiente' : 'Pagada',
-          fechaPago: l.fecha_pago
-        }));
-      } catch (error) {
-        console.error("Error cargando liquidaciones", error);
-        alert("Error de conexión al cargar datos.");
-      } finally {
-        this.cargando = false;
-      }
-    },
-    async calcularLiquidacion() {
-      this.procesando = true;
-      try {
-        await api.calcularLiquidacion(this.nuevaLiquidacion);
-        alert("Liquidación generada con éxito");
-        
-        // Cerrar modal manualmente
-        const modalEl = document.getElementById('modalLiquidacion');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-        
-        // Limpiar form
-        this.nuevaLiquidacion = { id_empleado: '', periodo_inicio: '', periodo_fin: '' };
-        await this.cargarLiquidaciones();
-        
-      } catch (error) {
-        const msg = error.response?.data?.detail || "Error desconocido";
-        alert("No se pudo generar: " + msg);
-      } finally {
-        this.procesando = false;
-      }
-    },
-    async verDetalle(liq) {
-      this.liquidacionSeleccionada = liq;
-      this.detalleServicios = []; 
-      try {
-        const data = await api.getLiquidacionDetalle(liq.id);
-        // Completamos datos que faltaban en la vista de lista (ej: email)
-        this.liquidacionSeleccionada = { ...this.liquidacionSeleccionada, ...data, estado: data.estado === 'pendiente' ? 'Pendiente' : 'Pagada' };
-        this.detalleServicios = data.servicios || [];
-      } catch (error) {
-        console.error("Error detalle", error);
-        alert("No se pudo cargar el detalle.");
-      }
-    },
-    async marcarPagada(liq) {
-      if(!confirm(`¿Confirmas el pago a ${liq.empleado}?`)) return;
-      try {
-        await api.marcarLiquidacionPagada(liq.id);
-        // Actualizamos localmente para no recargar todo si no quieres
-        liq.estado = 'Pagada'; 
-        await this.cargarLiquidaciones(); // Recarga completa para asegurar
-      } catch (error) {
-        alert("Error al procesar el pago.");
-      }
-    },
-    // NUEVO MÉTODO DE ELIMINAR
-    async eliminarLiquidacion(liq) {
-      if (!confirm(`⚠️ ¿Estás seguro de ELIMINAR la liquidación de ${liq.empleado}?\n\nEsta acción borrará el registro y permitirá volver a calcular el período.`)) {
-        return;
-      }
-      try {
-        await api.deleteLiquidacion(liq.id);
-        alert("Liquidación eliminada correctamente.");
-        await this.cargarLiquidaciones();
-      } catch (error) {
-        const msg = error.response?.data?.detail || "Error al eliminar";
-        alert(msg);
-      }
-    },
-    formatDate(dateStr) {
-      if(!dateStr) return '-';
-      // Ajuste para zona horaria si es necesario, o simple string
-      return new Date(dateStr).toLocaleDateString('es-CL'); 
-    },
-    formatearServicio(texto) {
-      if(!texto) return '';
-      return texto.replace(/_/g, ' ').toUpperCase();
-    }
+// 1. Carga de Datos
+const { data: liquidaciones, loading, error, exec: cargarLiquidaciones } = useApi(api.getLiquidaciones)
+const empleados = ref([])
+
+// 2. Variables UI
+const { showModal, hideModal } = useBootstrap()
+const nuevaLiquidacion = reactive({ id_empleado: '', periodo_inicio: '', periodo_fin: '' })
+const filtros = reactive({ empleado: '', estado: '' })
+const liquidacionSeleccionada = ref({})
+const detalleServicios = ref([])
+
+// 3. Cargar al inicio
+onMounted(async () => {
+  cargarLiquidaciones()
+  try {
+    empleados.value = await api.getEmpleados()
+  } catch (e) { console.error("Error cargando empleados para select", e) }
+})
+
+// 4. Computados
+const liquidacionesFiltradas = computed(() => {
+  if (!liquidaciones.value) return []
+  return liquidaciones.value.filter(l => {
+    // Nota: El backend devuelve 'estado' en minúsculas ('pendiente', 'pagada')
+    const estadoFiltro = filtros.estado.toLowerCase()
+    
+    const matchEmp = filtros.empleado ? l.nombre_empleado === filtros.empleado : true
+    const matchEst = filtros.estado ? l.estado === estadoFiltro : true
+    return matchEmp && matchEst
+  })
+})
+
+const pendientesCount = computed(() => {
+  if (!liquidaciones.value) return 0
+  return liquidaciones.value.filter(l => l.estado === 'pendiente').length
+})
+
+const totalPendiente = computed(() => {
+  if (!liquidaciones.value) return 0
+  return liquidaciones.value
+    .filter(l => l.estado === 'pendiente')
+    .reduce((sum, l) => sum + (l.total_comisiones || 0), 0)
+})
+
+// 5. Acciones
+const abrirModalCrear = () => {
+  Object.assign(nuevaLiquidacion, { id_empleado: '', periodo_inicio: '', periodo_fin: '' })
+  showModal('modalLiquidacion')
+}
+
+const calcularLiquidacion = async () => {
+  try {
+    await api.calcularLiquidacion(nuevaLiquidacion)
+    hideModal('modalLiquidacion')
+    cargarLiquidaciones()
+    alert("Liquidación generada con éxito")
+  } catch (e) {
+    alert("Error: " + (e.response?.data?.detail || e.message))
   }
 }
+
+const verDetalle = async (liq) => {
+  try {
+    const data = await api.getLiquidacionDetalle(liq.id)
+    liquidacionSeleccionada.value = data
+    detalleServicios.value = data.servicios || []
+    showModal('modalDetalleLiquidacion')
+  } catch (e) { alert("No se pudo cargar el detalle") }
+}
+
+const marcarPagada = async (liq) => {
+  if(!confirm(`¿Confirmas el pago a ${liq.nombre_empleado}?`)) return
+  try {
+    await api.marcarLiquidacionPagada(liq.id)
+    cargarLiquidaciones()
+  } catch (e) { alert("Error al procesar el pago") }
+}
+
+const eliminarLiquidacion = async (liq) => {
+  if (!confirm(`⚠️ ¿Estás seguro de ELIMINAR la liquidación de ${liq.nombre_empleado}?`)) return
+  try {
+    await api.deleteLiquidacion(liq.id)
+    cargarLiquidaciones()
+    alert("Liquidación eliminada")
+  } catch (e) { 
+    alert("Error: " + (e.response?.data?.detail || e.message)) 
+  }
+}
+
+// Helpers
+const formatDate = (dateStr) => {
+  if(!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('es-CL')
+}
+const formatearServicio = (texto) => texto ? texto.replace(/_/g, ' ').toUpperCase() : ''
 </script>
 
 <style scoped>

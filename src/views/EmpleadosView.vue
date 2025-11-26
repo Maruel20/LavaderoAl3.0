@@ -46,7 +46,7 @@
         <div class="card border-start border-4 border-primary h-100">
           <div class="card-body">
             <h6 class="text-muted mb-1 text-uppercase small">Total Personal</h6>
-            <h3 class="mb-0">{{ empleados.length }}</h3>
+            <h3 class="mb-0">{{ empleados?.length || 0 }}</h3>
           </div>
         </div>
       </div>
@@ -70,7 +70,18 @@
 
     <div class="card shadow-sm">
       <div class="card-body p-0">
-        <div class="table-responsive">
+        
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </div>
+
+        <div v-else-if="error" class="alert alert-danger m-3">
+          <i class="bi bi-exclamation-triangle me-2"></i> {{ error }}
+        </div>
+
+        <div v-else class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="bg-light">
               <tr>
@@ -83,28 +94,31 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="empleados.length === 0">
+              <tr v-if="empleadosFiltrados.length === 0">
                 <td colspan="6" class="text-center py-5 text-muted">
                   <i class="bi bi-people fs-1 d-block mb-2"></i>
-                  No hay empleados registrados.
+                  No hay empleados registrados con esos criterios.
                 </td>
               </tr>
               <tr v-for="empleado in empleadosFiltrados" :key="empleado.id">
                 <td class="ps-3">
                   <div class="fw-bold">{{ empleado.nombre }}</div>
-                  <small class="text-muted" style="font-size: 0.75rem;">ID Interno: {{ empleado.id }}</small>
+                  <small class="text-muted" style="font-size: 0.75rem;">ID: {{ empleado.id }}</small>
                 </td>
-                <td>{{ empleado.rut }}</td> <td>
-                  <div v-if="empleado.telefono"><i class="bi bi-whatsapp text-success me-1"></i> {{ empleado.telefono }}</div>
+                <td>{{ empleado.rut }}</td>
+                <td>
+                  <div v-if="empleado.telefono">
+                    <i class="bi bi-whatsapp text-success me-1"></i> {{ empleado.telefono }}
+                  </div>
                   <div v-if="empleado.email" class="small text-muted">{{ empleado.email }}</div>
                 </td>
                 <td>
-                  <span :class="'badge bg-' + (empleado.porcentajeComision >= 50 ? 'success' : 'primary')">
-                    {{ empleado.porcentajeComision }}%
+                  <span :class="`badge bg-${empleado.porcentaje_comision >= 50 ? 'success' : 'primary'}`">
+                    {{ empleado.porcentaje_comision }}%
                   </span>
                 </td>
                 <td>
-                  <span :class="'badge rounded-pill bg-' + (empleado.estado === 'activo' ? 'success' : 'secondary')">
+                  <span :class="`badge rounded-pill bg-${empleado.estado === 'activo' ? 'success' : 'secondary'}`">
                     {{ empleado.estado === 'activo' ? 'Activo' : 'Inactivo' }}
                   </span>
                 </td>
@@ -125,7 +139,8 @@
                       v-else
                       class="btn btn-outline-success" 
                       title="Reactivar" 
-                      @click="reactivarEmpleado(empleado)" >
+                      @click="reactivarEmpleado(empleado)"
+                    >
                       <i class="bi bi-person-check"></i>
                     </button>
                   </div>
@@ -145,7 +160,7 @@
               <i class="bi" :class="form.id ? 'bi-pencil-square' : 'bi-person-plus'"></i>
               {{ form.id ? 'Editar Empleado' : 'Nuevo Empleado' }}
             </h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="btnCerrarModalEmp"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <form @submit.prevent="guardarEmpleado">
@@ -187,14 +202,14 @@
                   </div>
                 </div>
               </div>
+              <div class="modal-footer mt-3 px-0 pb-0 border-top-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-save me-2"></i>
+                  {{ form.id ? 'Actualizar Datos' : 'Guardar Empleado' }}
+                </button>
+              </div>
             </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-primary" @click="guardarEmpleado">
-              <i class="bi bi-save me-2"></i>
-              {{ form.id ? 'Actualizar Datos' : 'Guardar Empleado' }}
-            </button>
           </div>
         </div>
       </div>
@@ -202,157 +217,138 @@
   </div>
 </template>
 
-<script>
-import * as bootstrap from 'bootstrap'
-import api from '@/services/api';
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import api from '@/services/api'
+import { useApi } from '@/composables/useApi'
+import { useBootstrap } from '@/composables/useBootstrap'
 
-export default {
-  name: 'EmpleadosView',
-  data() {
-    return {
-      busqueda: '',
-      filtroEstado: 'activo', // Por defecto ver solo activos
-      empleados: [],
-      form: {
-        id: null,
-        nombre: '',
-        rut: '', // En backend es rut, visualmente es Cédula
-        telefono: '',
-        email: '',
-        porcentaje_comision: 40
-      }
-    }
-  },
-  mounted() {
-    this.cargarEmpleados();
-  },
-  computed: {
-    empleadosFiltrados() {
-      return this.empleados.filter(emp => {
-        const term = this.busqueda.toLowerCase();
-        const coincideBusqueda = emp.nombre.toLowerCase().includes(term) || 
-                                 emp.rut.toString().includes(term); // rut es string o number
-        
-        const coincideEstado = this.filtroEstado ? emp.estado === this.filtroEstado : true;
-        
-        return coincideBusqueda && coincideEstado;
-      });
-    },
-    empleadosActivos() {
-      return this.empleados.filter(e => e.estado === 'activo').length;
-    }
-  },
-  methods: {
-    async cargarEmpleados() {
-      try {
-        const response = await api.getEmpleados();
-        // Normalizar respuesta
-        const data = Array.isArray(response) ? response : (response.data || []);
-        
-        this.empleados = data.map(e => ({
-          ...e,
-          // Mapeo seguro de nombres de columna
-          porcentajeComision: e.porcentaje_comision,
-          rut: e.rut // La base de datos guarda la cédula aquí
-        }));
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    },
+// 1. Usar el Composable para manejo de API (Carga de datos)
+const { 
+  data: empleados, 
+  loading, 
+  error, 
+  exec: cargarEmpleados 
+} = useApi(api.getEmpleados)
 
-    abrirModalCrear() {
-      this.limpiarFormulario();
-      const modal = new bootstrap.Modal(document.getElementById('modalEmpleado'));
-      modal.show();
-    },
+// 2. Variables reactivas y herramientas
+const { showModal, hideModal } = useBootstrap()
+const busqueda = ref('')
+const filtroEstado = ref('activo')
 
-    editarEmpleado(emp) {
-      // Clonamos el objeto para no modificar la tabla en tiempo real
-      this.form = {
-        id: emp.id,
-        nombre: emp.nombre,
-        rut: emp.rut,
-        telefono: emp.telefono,
-        email: emp.email || '',
-        porcentaje_comision: emp.porcentajeComision
-      };
-      const modal = new bootstrap.Modal(document.getElementById('modalEmpleado'));
-      modal.show();
-    },
+const form = reactive({
+  id: null,
+  nombre: '',
+  rut: '',
+  telefono: '',
+  email: '',
+  porcentaje_comision: 40
+})
 
-    async guardarEmpleado() {
-      if (!this.form.nombre || !this.form.rut || !this.form.telefono) {
-        alert("Completa los campos obligatorios (*)");
-        return;
-      }
+// 3. Ciclo de vida
+onMounted(() => {
+  cargarEmpleados()
+})
 
-      try {
-        const payload = {
-          nombre: this.form.nombre,
-          rut: this.form.rut.toString(), // Aseguramos string para BD
-          telefono: this.form.telefono,
-          email: this.form.email,
-          porcentaje_comision: parseInt(this.form.porcentaje_comision)
-        };
+// 4. Propiedades Computadas (Filtros)
+const empleadosFiltrados = computed(() => {
+  if (!empleados.value) return []
+  return empleados.value.filter(emp => {
+    const term = busqueda.value.toLowerCase()
+    const rutStr = emp.rut ? String(emp.rut) : ''
+    
+    const matchText = emp.nombre.toLowerCase().includes(term) || rutStr.includes(term)
+    const matchEstado = filtroEstado.value ? emp.estado === filtroEstado.value : true
+    
+    return matchText && matchEstado
+  })
+})
 
-        if (this.form.id) {
-            // EDITAR (PUT)
-             // Necesitas agregar updateEmpleado en api.js
-             // await api.updateEmpleado(this.form.id, payload);
-             
-             // Si no tienes updateEmpleado en api.js, usa axios directo temporalmente o agrégalo:
-             await api.updateEmpleado(this.form.id, payload); // Asumiendo que ya lo agregaste
-             alert("Empleado actualizado correctamente");
-        } else {
-            // CREAR (POST)
-            await api.createEmpleado(payload);
-            alert("Empleado registrado correctamente");
-        }
-        
-        // Cerrar modal
-        const modalEl = document.getElementById('modalEmpleado');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
+const empleadosActivos = computed(() => {
+  if (!empleados.value) return 0
+  return empleados.value.filter(e => e.estado === 'activo').length
+})
 
-        this.cargarEmpleados();
-        this.limpiarFormulario();
-        
-      } catch (error) {
-        console.error("Error guardar:", error);
-        alert("Error: " + (error.response?.data?.detail || "Verifica la Cédula o conexión"));
-      }
-    },
+// 5. Funciones (Acciones)
+const limpiarFormulario = () => {
+  Object.assign(form, {
+    id: null,
+    nombre: '',
+    rut: '',
+    telefono: '',
+    email: '',
+    porcentaje_comision: 40
+  })
+}
 
-    async eliminarEmpleado(emp) {
-      if (!confirm(`¿Estás seguro de desactivar a ${emp.nombre}?\nYa no aparecerá en nuevos servicios.`)) {
-        return;
-      }
-      try {
-        // Asumiendo que agregaste deleteEmpleado en api.js
-        await api.deleteEmpleado(emp.id); 
-        alert("Empleado desactivado.");
-        this.cargarEmpleados();
-      } catch (error) {
-        alert("Error al desactivar empleado");
-      }
-    },
+const abrirModalCrear = () => {
+  limpiarFormulario()
+  showModal('modalEmpleado')
+}
 
-    async reactivarEmpleado(emp) {
-       // Opcional: Reutiliza el endpoint de update para cambiar estado o crea uno específico
-       alert("Funcionalidad de reactivación pendiente de backend");
-    },
+const editarEmpleado = (emp) => {
+  // Copiamos los valores al formulario reactivo
+  Object.assign(form, {
+    id: emp.id,
+    nombre: emp.nombre,
+    rut: emp.rut,
+    telefono: emp.telefono,
+    email: emp.email || '',
+    // Nota: El backend devuelve 'porcentaje_comision' (snake_case)
+    porcentaje_comision: emp.porcentaje_comision 
+  })
+  showModal('modalEmpleado')
+}
 
-    limpiarFormulario() {
-      this.form = {
-        id: null,
-        nombre: '',
-        rut: '',
-        telefono: '',
-        email: '',
-        porcentaje_comision: 40
-      };
-    }
+const guardarEmpleado = async () => {
+  if (!form.nombre || !form.rut || !form.telefono) {
+    alert("Completa los campos obligatorios (*)")
+    return
   }
+
+  try {
+    const payload = {
+      nombre: form.nombre,
+      rut: String(form.rut),
+      telefono: form.telefono,
+      email: form.email,
+      porcentaje_comision: parseInt(form.porcentaje_comision)
+    }
+
+    if (form.id) {
+      await api.updateEmpleado(form.id, payload)
+      alert("Empleado actualizado correctamente")
+    } else {
+      await api.createEmpleado(payload)
+      alert("Empleado registrado correctamente")
+    }
+    
+    hideModal('modalEmpleado')
+    cargarEmpleados() // Recargar la lista
+    limpiarFormulario()
+    
+  } catch (err) {
+    console.error("Error guardar:", err)
+    const msg = err.response?.data?.detail || "Verifica la Cédula o conexión"
+    alert("Error: " + msg)
+  }
+}
+
+const eliminarEmpleado = async (emp) => {
+  if (!confirm(`¿Estás seguro de desactivar a ${emp.nombre}?\nYa no aparecerá en nuevos servicios.`)) {
+    return
+  }
+  try {
+    await api.deleteEmpleado(emp.id)
+    alert("Empleado desactivado.")
+    cargarEmpleados()
+  } catch (err) {
+    alert("Error al desactivar empleado")
+  }
+}
+
+const reactivarEmpleado = (emp) => {
+  alert("Funcionalidad de reactivación pendiente de backend")
 }
 </script>
 

@@ -2,7 +2,9 @@
   <div class="container-fluid py-4 fade-in">
     <div class="row mb-4 align-items-center">
       <div class="col">
-        <h2 class="fw-bold text-primary"><i class="bi bi-droplet-half me-2"></i>Gestión de Servicios</h2>
+        <h2 class="fw-bold text-primary">
+          <i class="bi bi-droplet-half me-2"></i>Gestión de Servicios
+        </h2>
         <p class="text-muted mb-0">Administración de lavados, convenios y asignación de personal</p>
       </div>
       <div class="col-auto">
@@ -12,7 +14,16 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p class="mt-2 text-muted">Cargando servicios...</p>
+    </div>
+
+    <div v-else-if="error" class="alert alert-danger m-3">
+      <i class="bi bi-exclamation-triangle me-2"></i> {{ error }}
+    </div>
+
+    <div v-else class="card border-0 shadow-sm">
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -29,7 +40,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in servicios" :key="s.id" :class="{'table-active text-muted opacity-75': s.estado === 'cancelado'}">
+              <tr v-for="s in serviciosProcesados" :key="s.id" :class="{'table-active text-muted opacity-75': s.estado === 'cancelado'}">
                 <td class="ps-4">
                   <div class="fw-bold text-dark">{{ s.fecha_fmt }}</div>
                   <small class="text-muted">{{ s.hora_fmt }}</small>
@@ -67,7 +78,7 @@
                     <button class="btn btn-sm btn-outline-secondary" @click="abrirModalEditar(s)" title="Editar">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" @click="cancelarServicio(s)" title="Cancelar / Eliminar">
+                    <button class="btn btn-sm btn-outline-danger" @click="cancelarServicio(s)" title="Cancelar">
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -97,13 +108,12 @@
           </div>
           
           <div class="modal-body p-4">
-            
             <div v-if="!modoEdicion" class="d-flex justify-content-center mb-4">
               <div class="btn-group shadow-sm" role="group">
-                <input type="radio" class="btn-check" name="tipoReg" id="regNormal" value="normal" v-model="tipoRegistro" @change="limpiarFormulario">
+                <input type="radio" class="btn-check" name="tipoReg" id="regNormal" value="normal" v-model="tipoRegistro" @change="limpiarFormulario(false)">
                 <label class="btn btn-outline-primary px-4" for="regNormal">Particular</label>
                 
-                <input type="radio" class="btn-check" name="tipoReg" id="regConvenio" value="convenio" v-model="tipoRegistro" @change="limpiarFormulario">
+                <input type="radio" class="btn-check" name="tipoReg" id="regConvenio" value="convenio" v-model="tipoRegistro" @change="limpiarFormulario(false)">
                 <label class="btn btn-outline-primary px-4" for="regConvenio">Empresa / Convenio</label>
               </div>
             </div>
@@ -134,7 +144,7 @@
                       <strong>{{ convenioDetectado.nombre_empresa }}</strong>
                       <div class="small">
                         Descuento: {{ convenioDetectado.tipo_descuento === 'porcentaje' ? convenioDetectado.valor_descuento + '%' : '$' + convenioDetectado.valor_descuento }}
-                        | Vehículo registrado: <span class="text-uppercase">{{ convenioDetectado.tipo_vehiculo || 'N/A' }}</span>
+                        | Vehículo: <span class="text-uppercase">{{ convenioDetectado.tipo_vehiculo || 'N/A' }}</span>
                       </div>
                     </div>
                   </div>
@@ -193,8 +203,8 @@
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label">Observaciones (Opcional)</label>
-                  <textarea class="form-control" v-model="form.observaciones" rows="2" placeholder="Detalles extra..."></textarea>
+                  <label class="form-label">Observaciones</label>
+                  <textarea class="form-control" v-model="form.observaciones" rows="2"></textarea>
                 </div>
               </div>
             </form>
@@ -204,275 +214,243 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
             <button type="button" class="btn" :class="modoEdicion ? 'btn-warning' : 'btn-primary'" @click="guardarServicio">
               <i class="bi" :class="modoEdicion ? 'bi-pencil-square' : 'bi-save'"></i>
-              {{ modoEdicion ? 'Actualizar Cambios' : 'Registrar Servicio' }}
+              {{ modoEdicion ? 'Actualizar' : 'Registrar' }}
             </button>
           </div>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
-<script>
-import * as bootstrap from 'bootstrap'
-import api from '@/services/api' // Asumo que tienes configurado Axios aquí
+<script setup>
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import api from '@/services/api'
+import { useApi } from '@/composables/useApi'
+import { useBootstrap } from '@/composables/useBootstrap'
 
-export default {
-  name: 'ServiciosView',
-  data() {
-    return {
-      servicios: [],
-      empleados: [],
-      tarifas: {},
-      
-      // Control UI
-      modoEdicion: false,
-      tipoRegistro: 'normal',
-      validando: false,
-      convenioDetectado: null,
-      errorConvenio: null,
-      modalInstance: null,
-      
-      // Variables de Cálculo
-      precioLista: 0,
-      montoDescuento: 0,
+// 1. Variables y Estado
+const { showModal, hideModal } = useBootstrap()
+const servicios = ref([])
+const empleados = ref([])
+const tarifas = ref({})
 
-      // Formulario
-      form: {
-        id: null,
-        patente: '',
-        tipo_vehiculo: 'auto',
-        tipo_servicio: '',
-        monto_total: 0,
-        id_empleado: '',
-        id_convenio: null,
-        descuento: 0,
-        observaciones: ''
-      }
+const modoEdicion = ref(false)
+const tipoRegistro = ref('normal')
+const validando = ref(false)
+const convenioDetectado = ref(null)
+const errorConvenio = ref(null)
+
+const precioLista = ref(0)
+const montoDescuento = ref(0)
+
+const form = reactive({
+  id: null,
+  patente: '',
+  tipo_vehiculo: 'auto',
+  tipo_servicio: '',
+  monto_total: 0,
+  id_empleado: '',
+  id_convenio: null,
+  descuento: 0,
+  observaciones: ''
+})
+
+// 2. Carga Inicial
+const cargarDatosIniciales = async () => {
+  // Carga paralela eficiente
+  const [resServ, resEmp, resTarif] = await Promise.all([
+    api.getServicios(),
+    api.getEmpleados(),
+    api.getTarifas()
+  ])
+
+  servicios.value = resServ.data || resServ
+  empleados.value = resEmp.data || resEmp
+  
+  // Procesar tarifas para acceso rápido
+  const listaTarifas = resTarif.data || resTarif
+  tarifas.value = {}
+  listaTarifas.forEach(t => {
+    if (!tarifas.value[t.tipo_vehiculo]) tarifas.value[t.tipo_vehiculo] = {}
+    tarifas.value[t.tipo_vehiculo][t.tipo_servicio] = t.precio
+  })
+  
+  return true
+}
+
+// Usamos el composable para manejar la carga
+const { loading, error, exec: recargar } = useApi(cargarDatosIniciales)
+
+onMounted(() => {
+  recargar()
+})
+
+// 3. Propiedades Computadas
+const serviciosProcesados = computed(() => {
+  return servicios.value.map(s => ({
+    ...s,
+    fecha_fmt: new Date(s.fecha).toLocaleDateString(),
+    hora_fmt: new Date(s.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+  }))
+})
+
+// 4. Lógica de Negocio
+const validarConvenio = async () => {
+  if (!form.patente) return
+  validando.value = true
+  errorConvenio.value = null
+  convenioDetectado.value = null
+  form.id_convenio = null
+
+  try {
+    const res = await api.validarConvenioPatente(form.patente) // Asegúrate de tener esta función en api.js (ver nota abajo)
+    
+    if (res.tiene_convenio) {
+      const datos = res.convenio
+      convenioDetectado.value = datos
+      form.id_convenio = datos.id_convenio
+      if (datos.tipo_vehiculo) form.tipo_vehiculo = datos.tipo_vehiculo
+      calcularPrecio()
+    } else {
+      errorConvenio.value = "Patente no asociada a convenio vigente."
     }
-  },
-  mounted() {
-    this.modalInstance = new bootstrap.Modal(document.getElementById('modalServicio'));
-    this.cargarDatosIniciales();
-  },
-  methods: {
-    // --- 1. CARGA DE DATOS ---
-    async cargarDatosIniciales() {
-      try {
-        const [resServ, resEmp, resTarif] = await Promise.all([
-          api.getServicios(), // Debe llamar a GET /api/servicios
-          api.getEmpleados(), // GET /api/empleados
-          api.getTarifas()    // GET /api/tarifas
-        ]);
-
-        // Procesar Servicios
-        this.servicios = (resServ.data || resServ).map(s => ({
-          ...s,
-          fecha_fmt: new Date(s.fecha).toLocaleDateString(),
-          hora_fmt: new Date(s.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-        }));
-
-        this.empleados = resEmp.data || resEmp;
-
-        // Procesar Tarifas para acceso rápido: tarifas[tipo_vehiculo][servicio] = precio
-        const listaTarifas = resTarif.data || resTarif;
-        this.tarifas = {};
-        listaTarifas.forEach(t => {
-          if (!this.tarifas[t.tipo_vehiculo]) this.tarifas[t.tipo_vehiculo] = {};
-          this.tarifas[t.tipo_vehiculo][t.tipo_servicio] = t.precio;
-        });
-
-      } catch (error) {
-        console.error("Error cargando datos:", error);
-        alert("Error de conexión al cargar datos.");
-      }
-    },
-
-    // --- 2. LÓGICA CONVENIOS ---
-    async validarConvenio() {
-      if (!this.form.patente) return;
-      
-      this.validando = true;
-      this.errorConvenio = null;
-      this.convenioDetectado = null;
-      this.form.id_convenio = null;
-
-      try {
-        const res = await api.verificarConvenioPatente(this.form.patente);
-        // Espera { tiene_convenio: bool, convenio: object }
-        
-        if (res.data.tiene_convenio || res.tiene_convenio) {
-          const datos = res.data.convenio || res.convenio;
-          this.convenioDetectado = datos;
-          
-          this.form.id_convenio = datos.id_convenio;
-          // Si el convenio especifica tipo de vehículo, lo seteamos
-          if (datos.tipo_vehiculo) {
-            this.form.tipo_vehiculo = datos.tipo_vehiculo;
-          }
-          this.calcularPrecio();
-        } else {
-          this.errorConvenio = "Patente no asociada a convenio vigente.";
-        }
-      } catch (e) {
-        this.errorConvenio = "Error al validar la patente.";
-      } finally {
-        this.validando = false;
-      }
-    },
-
-    // --- 3. CÁLCULO DE PRECIOS ---
-    calcularPrecio() {
-      const v = this.form.tipo_vehiculo;
-      const s = this.form.tipo_servicio;
-
-      // Obtener precio base
-      if (v && s && this.tarifas[v] && this.tarifas[v][s]) {
-        this.precioLista = parseFloat(this.tarifas[v][s]);
-      } else {
-        this.precioLista = 0;
-      }
-
-      this.montoDescuento = 0;
-
-      // Aplicar descuento si hay convenio activo
-      if (this.tipoRegistro === 'convenio' && this.convenioDetectado && this.precioLista > 0) {
-        const c = this.convenioDetectado;
-        if (c.tipo_descuento === 'porcentaje') {
-          this.montoDescuento = Math.round(this.precioLista * (c.valor_descuento / 100));
-        } else {
-          this.montoDescuento = parseFloat(c.valor_descuento);
-        }
-      }
-
-      // Total final
-      this.form.monto_total = Math.max(0, this.precioLista - this.montoDescuento);
-      this.form.descuento = this.montoDescuento;
-    },
-
-    // --- 4. GESTIÓN DEL FORMULARIO ---
-    abrirModalCrear() {
-      this.modoEdicion = false;
-      this.limpiarFormulario();
-      this.modalInstance.show();
-    },
-
-    abrirModalEditar(servicio) {
-      this.modoEdicion = true;
-      
-      // Determinar si es convenio o particular basado en datos existentes
-      this.tipoRegistro = servicio.es_convenio ? 'convenio' : 'normal';
-      
-      // Copiar datos al formulario
-      this.form = {
-        id: servicio.id,
-        patente: servicio.patente,
-        tipo_vehiculo: servicio.tipo_vehiculo,
-        tipo_servicio: servicio.tipo_servicio,
-        monto_total: servicio.monto_total,
-        id_empleado: servicio.id_empleado,
-        id_convenio: servicio.id_convenio,
-        descuento: servicio.descuento,
-        observaciones: servicio.observaciones || ''
-      };
-
-      // Si es convenio, simulamos la detección para mostrar el banner visual
-      if (servicio.es_convenio) {
-        this.convenioDetectado = {
-          nombre_empresa: servicio.nombre_empresa || 'Convenio Registrado',
-          tipo_descuento: 'histórico', // No importa para visualización
-          valor_descuento: 0 // Solo visual
-        };
-      } else {
-        this.convenioDetectado = null;
-      }
-
-      this.modalInstance.show();
-    },
-
-    limpiarFormulario() {
-      this.form = {
-        id: null, patente: '', tipo_vehiculo: 'auto', tipo_servicio: '',
-        monto_total: 0, id_empleado: '', id_convenio: null, descuento: 0, observaciones: ''
-      };
-      this.convenioDetectado = null;
-      this.errorConvenio = null;
-      this.precioLista = 0;
-      this.montoDescuento = 0;
-    },
-
-    // --- 5. GUARDAR (CREATE / UPDATE) ---
-    async guardarServicio() {
-      // Validaciones básicas
-      if (!this.form.patente || !this.form.tipo_servicio || !this.form.id_empleado) {
-        alert("Por favor complete los campos obligatorios.");
-        return;
-      }
-      
-      if (this.tipoRegistro === 'convenio' && !this.form.id_convenio && !this.modoEdicion) {
-         alert("Debe validar la patente del convenio primero.");
-         return;
-      }
-
-      const payload = {
-        ...this.form,
-        patente: this.form.patente.toUpperCase()
-      };
-
-      try {
-        if (this.modoEdicion) {
-          // UPDATE
-          await api.updateServicio(this.form.id, payload);
-          alert("Servicio actualizado correctamente");
-        } else {
-          // CREATE
-          await api.createServicio(payload);
-          alert("Servicio registrado exitosamente");
-        }
-        
-        this.modalInstance.hide();
-        this.cargarDatosIniciales(); // Recargar tabla
-      } catch (error) {
-        console.error(error);
-        const msg = error.response?.data?.detail || "Error al guardar";
-        alert("Error: " + msg);
-      }
-    },
-
-    // --- 6. ELIMINAR / CANCELAR ---
-    async cancelarServicio(item) {
-      if (!confirm(`¿Está seguro de cancelar el servicio de la patente ${item.patente}?`)) return;
-      
-      try {
-        await api.deleteServicio(item.id);
-        this.cargarDatosIniciales();
-      } catch (error) {
-        alert("No se pudo cancelar el servicio.");
-      }
-    },
-
-    // --- UTILIDADES ---
-    formatearServicio(slug) {
-      if (!slug) return '';
-      return slug.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    },
-    getColorEstado(estado) {
-      const map = {
-        'completado': 'success',
-        'pendiente': 'warning',
-        'cancelado': 'secondary'
-      };
-      return map[estado] || 'primary';
-    }
+  } catch (e) {
+    errorConvenio.value = "Error al validar la patente."
+  } finally {
+    validando.value = false
   }
 }
+
+const calcularPrecio = () => {
+  const v = form.tipo_vehiculo
+  const s = form.tipo_servicio
+
+  // Precio Base
+  if (v && s && tarifas.value[v] && tarifas.value[v][s]) {
+    precioLista.value = parseFloat(tarifas.value[v][s])
+  } else {
+    precioLista.value = 0
+  }
+
+  montoDescuento.value = 0
+
+  // Descuento
+  if (tipoRegistro.value === 'convenio' && convenioDetectado.value && precioLista.value > 0) {
+    const c = convenioDetectado.value
+    if (c.tipo_descuento === 'porcentaje') {
+      montoDescuento.value = Math.round(precioLista.value * (c.valor_descuento / 100))
+    } else {
+      montoDescuento.value = parseFloat(c.valor_descuento)
+    }
+  }
+
+  form.monto_total = Math.max(0, precioLista.value - montoDescuento.value)
+  form.descuento = montoDescuento.value
+}
+
+const limpiarFormulario = (borrarTodo = true) => {
+  // Reset parcial o total según necesidad
+  if (borrarTodo) {
+    Object.assign(form, { id: null, patente: '', tipo_vehiculo: 'auto', tipo_servicio: '', monto_total: 0, id_empleado: '', id_convenio: null, descuento: 0, observaciones: '' })
+  } else {
+    // Al cambiar de tipo de registro, solo reseteamos convenios
+    form.id_convenio = null
+    form.descuento = 0
+    convenioDetectado.value = null
+    errorConvenio.value = null
+    calcularPrecio()
+  }
+}
+
+const abrirModalCrear = () => {
+  modoEdicion.value = false
+  limpiarFormulario(true)
+  showModal('modalServicio')
+}
+
+const abrirModalEditar = (s) => {
+  modoEdicion.value = true
+  tipoRegistro.value = s.es_convenio ? 'convenio' : 'normal'
+  
+  // Copiar datos
+  Object.assign(form, {
+    id: s.id,
+    patente: s.patente,
+    tipo_vehiculo: s.tipo_vehiculo,
+    tipo_servicio: s.tipo_servicio,
+    monto_total: s.monto_total,
+    id_empleado: s.id_empleado,
+    id_convenio: s.id_convenio,
+    descuento: s.descuento,
+    observaciones: s.observaciones || ''
+  })
+
+  // Simular convenio visualmente si es edición
+  if (s.es_convenio) {
+    convenioDetectado.value = {
+      nombre_empresa: s.nombre_empresa || 'Convenio Registrado',
+      tipo_descuento: 'histórico', 
+      valor_descuento: 0
+    }
+  } else {
+    convenioDetectado.value = null
+  }
+  
+  showModal('modalServicio')
+}
+
+const guardarServicio = async () => {
+  if (!form.patente || !form.tipo_servicio || !form.id_empleado) {
+    alert("Por favor complete los campos obligatorios.")
+    return
+  }
+  
+  if (tipoRegistro.value === 'convenio' && !form.id_convenio && !modoEdicion.value) {
+     alert("Debe validar la patente del convenio primero.")
+     return
+  }
+
+  try {
+    const payload = { ...form, patente: form.patente.toUpperCase() }
+    
+    if (modoEdicion.value) {
+      await api.updateServicio(form.id, payload)
+      alert("Servicio actualizado correctamente")
+    } else {
+      await api.createServicio(payload)
+      alert("Servicio registrado exitosamente")
+    }
+    
+    hideModal('modalServicio')
+    recargar()
+  } catch (err) {
+    const msg = err.response?.data?.detail || "Error al guardar"
+    alert("Error: " + msg)
+  }
+}
+
+const cancelarServicio = async (item) => {
+  if (!confirm(`¿Cancelar servicio de ${item.patente}?`)) return
+  try {
+    await api.deleteServicio(item.id)
+    recargar()
+  } catch (e) {
+    alert("No se pudo cancelar.")
+  }
+}
+
+// Helpers de formato
+const formatearServicio = (slug) => slug ? slug.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : ''
+const getColorEstado = (e) => ({ 'completado': 'success', 'pendiente': 'warning', 'cancelado': 'secondary' }[e] || 'primary')
+
+// Nota: Si necesitas la función `api.validarConvenioPatente`, asegúrate de que apunte a:
+// GET /api/convenios/validar/{patente}
 </script>
 
 <style scoped>
 .fade-in { animation: fadeIn 0.4s ease-in-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
 .bg-indigo { background-color: #6610f2; }
 .opacity-75 { opacity: 0.75; }
 </style>
