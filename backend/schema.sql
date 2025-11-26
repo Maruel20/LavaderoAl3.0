@@ -1,5 +1,6 @@
--- Schema para Base de Datos LavaderoAl
+-- Schema para Base de Datos LavaderoAL
 -- MySQL Database
+-- Adaptado para Colombia
 
 DROP DATABASE IF EXISTS lavadero_al;
 CREATE DATABASE lavadero_al CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -21,21 +22,21 @@ CREATE TABLE usuarios (
 CREATE TABLE empleados (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    rut VARCHAR(12) UNIQUE NOT NULL,
+    cedula VARCHAR(15) UNIQUE NOT NULL,
     telefono VARCHAR(15),
     email VARCHAR(100),
     porcentaje_comision INT DEFAULT 0,
     estado ENUM('activo', 'inactivo') DEFAULT 'activo',
     fecha_ingreso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_estado (estado),
-    INDEX idx_rut (rut)
+    INDEX idx_cedula (cedula)
 );
 
 -- Tabla de convenios
 CREATE TABLE convenios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre_empresa VARCHAR(100) NOT NULL,
-    rut_empresa VARCHAR(12) NOT NULL,
+    nit_empresa VARCHAR(15) NOT NULL,
     contacto VARCHAR(100),
     telefono VARCHAR(15),
     email VARCHAR(100),
@@ -48,21 +49,21 @@ CREATE TABLE convenios (
     observaciones TEXT,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_estado (estado),
-    INDEX idx_rut_empresa (rut_empresa)
+    INDEX idx_nit_empresa (nit_empresa)
 );
 
 -- Tabla de vehículos de convenio
 CREATE TABLE vehiculos_convenio (
     id INT AUTO_INCREMENT PRIMARY KEY,
     id_convenio INT NOT NULL,
-    patente VARCHAR(10) NOT NULL,
+    placa VARCHAR(10) NOT NULL,
     tipo_vehiculo ENUM('auto', 'camioneta', 'suv', 'furgon') NOT NULL,
     modelo VARCHAR(50),
     color VARCHAR(30),
     estado ENUM('activo', 'inactivo') DEFAULT 'activo',
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_convenio) REFERENCES convenios(id) ON DELETE CASCADE,
-    INDEX idx_patente (patente),
+    INDEX idx_placa (placa),
     INDEX idx_convenio (id_convenio)
 );
 
@@ -83,7 +84,7 @@ CREATE TABLE tarifas (
 -- Tabla de servicios
 CREATE TABLE servicios (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    patente VARCHAR(10) NOT NULL,
+    placa VARCHAR(10) NOT NULL,
     tipo_vehiculo ENUM('auto', 'camioneta', 'suv', 'furgon') NOT NULL,
     tipo_servicio ENUM('lavado_simple', 'lavado_completo', 'encerado', 'lavado_motor', 'pulido', 'descontaminacion') NOT NULL,
     monto_total DECIMAL(10, 2) NOT NULL,
@@ -97,7 +98,7 @@ CREATE TABLE servicios (
     estado ENUM('pendiente', 'completado', 'cancelado') DEFAULT 'completado',
     FOREIGN KEY (id_empleado) REFERENCES empleados(id) ON DELETE SET NULL,
     FOREIGN KEY (id_convenio) REFERENCES convenios(id) ON DELETE SET NULL,
-    INDEX idx_patente (patente),
+    INDEX idx_placa (placa),
     INDEX idx_fecha (fecha),
     INDEX idx_empleado (id_empleado),
     INDEX idx_convenio (id_convenio)
@@ -170,92 +171,95 @@ CREATE TABLE detalle_liquidaciones (
     INDEX idx_servicio (id_servicio)
 );
 
--- Insertar datos de prueba
+-- ============================================
+-- DATOS DE PRUEBA
+-- ============================================
 
--- Usuarios
+-- Usuarios (contraseñas hasheadas con bcrypt)
+-- admin123 y emp123 son las contraseñas en texto plano
 INSERT INTO usuarios (username, password, rol) VALUES
-('admin', 'admin123', 'admin'),
-('empleado1', 'emp123', 'empleado');
+('admin', '$2b$12$RQwzcnGc6P41Hf6C3clD5OphmwpL94S9oqKmh0aXaa7pUq9Sp273q', 'admin'),
+('empleado1', '$2b$12$l4R0SBzYX6DZmkt2mcaKNOK8QBUnm6KQK2JKLBufL0RItMfIGhvJa', 'empleado');
 
--- Empleados
-INSERT INTO empleados (nombre, rut, telefono, email, porcentaje_comision, estado) VALUES
-('Juan Pérez', '12345678-9', '+56912345678', 'juan.perez@lavaderoal.cl', 15, 'activo'),
-('María González', '98765432-1', '+56998765432', 'maria.gonzalez@lavaderoal.cl', 18, 'activo'),
-('Pedro Sánchez', '11223344-5', '+56911223344', 'pedro.sanchez@lavaderoal.cl', 12, 'activo'),
-('Ana Martínez', '55667788-9', '+56955667788', 'ana.martinez@lavaderoal.cl', 20, 'inactivo');
+-- Empleados (con cédulas colombianas)
+INSERT INTO empleados (nombre, cedula, telefono, email, porcentaje_comision, estado) VALUES
+('Juan Pérez', '1045678901', '+573001234567', 'juan.perez@lavaderoal.com.co', 15, 'activo'),
+('María González', '1098765432', '+573009876543', 'maria.gonzalez@lavaderoal.com.co', 18, 'activo'),
+('Pedro Sánchez', '1112233445', '+573001122334', 'pedro.sanchez@lavaderoal.com.co', 12, 'activo'),
+('Ana Martínez', '1556677889', '+573005566778', 'ana.martinez@lavaderoal.com.co', 20, 'inactivo');
 
--- Tarifas
+-- Tarifas (precios en pesos colombianos)
 INSERT INTO tarifas (tipo_vehiculo, tipo_servicio, precio, descripcion) VALUES
 -- Autos
-('auto', 'lavado_simple', 8000, 'Lavado exterior básico'),
-('auto', 'lavado_completo', 15000, 'Lavado exterior e interior completo'),
-('auto', 'encerado', 12000, 'Encerado y brillo'),
-('auto', 'lavado_motor', 10000, 'Lavado de motor'),
-('auto', 'pulido', 25000, 'Pulido profesional'),
-('auto', 'descontaminacion', 20000, 'Descontaminación de pintura'),
+('auto', 'lavado_simple', 25000, 'Lavado exterior básico'),
+('auto', 'lavado_completo', 45000, 'Lavado exterior e interior completo'),
+('auto', 'encerado', 35000, 'Encerado y brillo'),
+('auto', 'lavado_motor', 30000, 'Lavado de motor'),
+('auto', 'pulido', 80000, 'Pulido profesional'),
+('auto', 'descontaminacion', 60000, 'Descontaminación de pintura'),
 
 -- Camionetas
-('camioneta', 'lavado_simple', 10000, 'Lavado exterior básico'),
-('camioneta', 'lavado_completo', 18000, 'Lavado exterior e interior completo'),
-('camioneta', 'encerado', 15000, 'Encerado y brillo'),
-('camioneta', 'lavado_motor', 12000, 'Lavado de motor'),
-('camioneta', 'pulido', 30000, 'Pulido profesional'),
-('camioneta', 'descontaminacion', 25000, 'Descontaminación de pintura'),
+('camioneta', 'lavado_simple', 30000, 'Lavado exterior básico'),
+('camioneta', 'lavado_completo', 55000, 'Lavado exterior e interior completo'),
+('camioneta', 'encerado', 45000, 'Encerado y brillo'),
+('camioneta', 'lavado_motor', 35000, 'Lavado de motor'),
+('camioneta', 'pulido', 95000, 'Pulido profesional'),
+('camioneta', 'descontaminacion', 75000, 'Descontaminación de pintura'),
 
 -- SUVs
-('suv', 'lavado_simple', 12000, 'Lavado exterior básico'),
-('suv', 'lavado_completo', 20000, 'Lavado exterior e interior completo'),
-('suv', 'encerado', 18000, 'Encerado y brillo'),
-('suv', 'lavado_motor', 14000, 'Lavado de motor'),
-('suv', 'pulido', 35000, 'Pulido profesional'),
-('suv', 'descontaminacion', 30000, 'Descontaminación de pintura'),
+('suv', 'lavado_simple', 35000, 'Lavado exterior básico'),
+('suv', 'lavado_completo', 60000, 'Lavado exterior e interior completo'),
+('suv', 'encerado', 55000, 'Encerado y brillo'),
+('suv', 'lavado_motor', 40000, 'Lavado de motor'),
+('suv', 'pulido', 110000, 'Pulido profesional'),
+('suv', 'descontaminacion', 90000, 'Descontaminación de pintura'),
 
 -- Furgones
-('furgon', 'lavado_simple', 15000, 'Lavado exterior básico'),
-('furgon', 'lavado_completo', 25000, 'Lavado exterior e interior completo'),
-('furgon', 'encerado', 20000, 'Encerado y brillo'),
-('furgon', 'lavado_motor', 16000, 'Lavado de motor'),
-('furgon', 'pulido', 40000, 'Pulido profesional'),
-('furgon', 'descontaminacion', 35000, 'Descontaminación de pintura');
+('furgon', 'lavado_simple', 45000, 'Lavado exterior básico'),
+('furgon', 'lavado_completo', 75000, 'Lavado exterior e interior completo'),
+('furgon', 'encerado', 60000, 'Encerado y brillo'),
+('furgon', 'lavado_motor', 50000, 'Lavado de motor'),
+('furgon', 'pulido', 120000, 'Pulido profesional'),
+('furgon', 'descontaminacion', 100000, 'Descontaminación de pintura');
 
--- Inventario
+-- Inventario (precios en pesos colombianos)
 INSERT INTO inventario (nombre, categoria, stock, stock_minimo, precio_unitario, unidad) VALUES
-('Shampoo Automotriz Premium', 'quimicos', 45, 10, 12500, 'litro'),
-('Cera Líquida', 'ceras', 8, 15, 18000, 'litro'),
-('Desengrasante Industrial', 'quimicos', 25, 10, 8500, 'litro'),
-('Microfibra Premium', 'accesorios', 35, 20, 3500, 'unidad'),
-('Cera en Pasta', 'ceras', 5, 10, 22000, 'unidad'),
-('Limpia Vidrios', 'quimicos', 18, 15, 4500, 'litro'),
-('Pulidor de Metales', 'quimicos', 12, 8, 15000, 'litro'),
-('Aspiradora Industrial', 'herramientas', 3, 2, 250000, 'unidad'),
-('Hidrolavadora', 'herramientas', 2, 1, 450000, 'unidad'),
-('Esponja Premium', 'accesorios', 50, 30, 2500, 'unidad');
+('Shampoo Automotriz Premium', 'quimicos', 45, 10, 38000, 'litro'),
+('Cera Líquida', 'ceras', 8, 15, 55000, 'litro'),
+('Desengrasante Industrial', 'quimicos', 25, 10, 25000, 'litro'),
+('Microfibra Premium', 'accesorios', 35, 20, 12000, 'unidad'),
+('Cera en Pasta', 'ceras', 5, 10, 65000, 'unidad'),
+('Limpia Vidrios', 'quimicos', 18, 15, 15000, 'litro'),
+('Pulidor de Metales', 'quimicos', 12, 8, 45000, 'litro'),
+('Aspiradora Industrial', 'herramientas', 3, 2, 750000, 'unidad'),
+('Hidrolavadora', 'herramientas', 2, 1, 1350000, 'unidad'),
+('Esponja Premium', 'accesorios', 50, 30, 8000, 'unidad');
 
--- Convenios
-INSERT INTO convenios (nombre_empresa, rut_empresa, contacto, telefono, email, tipo_descuento, valor_descuento, estado, fecha_inicio) VALUES
-('Transportes ABC Ltda.', '76543210-K', 'Carlos Silva', '+56922334455', 'contacto@transportesabc.cl', 'porcentaje', 15.00, 'activo', '2025-01-01'),
-('Empresa XYZ S.A.', '87654321-5', 'Laura Ramírez', '+56933445566', 'laura@empresaxyz.cl', 'monto_fijo', 2000.00, 'activo', '2025-01-15'),
-('Servicios del Sur', '65432109-8', 'Roberto Muñoz', '+56944556677', 'contacto@serviciosdelsur.cl', 'porcentaje', 20.00, 'inactivo', '2024-06-01');
+-- Convenios (con NITs colombianos)
+INSERT INTO convenios (nombre_empresa, nit_empresa, contacto, telefono, email, tipo_descuento, valor_descuento, estado, fecha_inicio) VALUES
+('Transportes ABC Ltda.', '900123456-1', 'Carlos Silva', '+573002233445', 'contacto@transportesabc.com.co', 'porcentaje', 15.00, 'activo', '2025-01-01'),
+('Empresa XYZ S.A.S.', '800654321-5', 'Laura Ramírez', '+573003344556', 'laura@empresaxyz.com.co', 'monto_fijo', 6000.00, 'activo', '2025-01-15'),
+('Servicios del Sinú', '900432109-8', 'Roberto Muñoz', '+573004455667', 'contacto@serviciosdelsinu.com.co', 'porcentaje', 20.00, 'inactivo', '2024-06-01');
 
--- Vehículos de convenio
-INSERT INTO vehiculos_convenio (id_convenio, patente, tipo_vehiculo, modelo, color) VALUES
-(1, 'ABCD12', 'camioneta', 'Toyota Hilux', 'Blanco'),
-(1, 'EFGH34', 'camioneta', 'Chevrolet D-Max', 'Gris'),
-(1, 'IJKL56', 'furgon', 'Hyundai H100', 'Blanco'),
-(2, 'MNOP78', 'auto', 'Suzuki Swift', 'Rojo'),
-(2, 'QRST90', 'suv', 'Kia Sportage', 'Negro');
+-- Vehículos de convenio (con placas colombianas)
+INSERT INTO vehiculos_convenio (id_convenio, placa, tipo_vehiculo, modelo, color) VALUES
+(1, 'ABC123', 'camioneta', 'Toyota Hilux', 'Blanco'),
+(1, 'DEF456', 'camioneta', 'Chevrolet D-Max', 'Gris'),
+(1, 'GHI789', 'furgon', 'Hyundai H100', 'Blanco'),
+(2, 'JKL012', 'auto', 'Chevrolet Spark', 'Rojo'),
+(2, 'MNO345', 'suv', 'Kia Sportage', 'Negro');
 
--- Servicios de ejemplo
-INSERT INTO servicios (patente, tipo_vehiculo, tipo_servicio, monto_total, monto_comision, id_empleado, fecha, estado) VALUES
-('AAAA11', 'auto', 'lavado_completo', 15000, 2250, 1, '2025-11-20 09:30:00', 'completado'),
-('BBBB22', 'camioneta', 'lavado_simple', 10000, 1800, 2, '2025-11-20 10:15:00', 'completado'),
-('CCCC33', 'suv', 'encerado', 18000, 2160, 1, '2025-11-20 11:00:00', 'completado'),
-('DDDD44', 'auto', 'pulido', 25000, 3000, 3, '2025-11-21 09:00:00', 'completado'),
-('EEEE55', 'furgon', 'lavado_completo', 25000, 3000, 2, '2025-11-21 14:30:00', 'completado'),
-('ABCD12', 'camioneta', 'lavado_simple', 8500, 1275, 1, '2025-11-22 08:00:00', 'completado');
+-- Servicios de ejemplo (con placas colombianas y precios en COP)
+INSERT INTO servicios (placa, tipo_vehiculo, tipo_servicio, monto_total, monto_comision, id_empleado, fecha, estado) VALUES
+('AAA111', 'auto', 'lavado_completo', 45000, 6750, 1, '2025-11-20 09:30:00', 'completado'),
+('BBB222', 'camioneta', 'lavado_simple', 30000, 5400, 2, '2025-11-20 10:15:00', 'completado'),
+('CCC333', 'suv', 'encerado', 55000, 6600, 1, '2025-11-20 11:00:00', 'completado'),
+('DDD444', 'auto', 'pulido', 80000, 9600, 3, '2025-11-21 09:00:00', 'completado'),
+('EEE555', 'furgon', 'lavado_completo', 75000, 9000, 2, '2025-11-21 14:30:00', 'completado'),
+('ABC123', 'camioneta', 'lavado_simple', 25500, 3825, 1, '2025-11-22 08:00:00', 'completado');
 
 -- Servicios con convenio (aplicando descuento)
-UPDATE servicios SET es_convenio = TRUE, id_convenio = 1, descuento = 1275, monto_total = 8500 WHERE id = 6;
+UPDATE servicios SET es_convenio = TRUE, id_convenio = 1, descuento = 4500, monto_total = 25500 WHERE id = 6;
 
 -- Movimientos de inventario
 INSERT INTO movimientos_inventario (id_insumo, tipo_movimiento, cantidad, motivo, usuario) VALUES
@@ -265,11 +269,15 @@ INSERT INTO movimientos_inventario (id_insumo, tipo_movimiento, cantidad, motivo
 (1, 'salida', 5, 'Uso en servicios', 'empleado1'),
 (4, 'entrada', 50, 'Reposición stock', 'admin');
 
--- Liquidaciones
+-- Liquidaciones (montos en pesos colombianos)
 INSERT INTO liquidaciones (id_empleado, periodo_inicio, periodo_fin, total_servicios, monto_total_servicios, total_comisiones, estado, fecha_pago) VALUES
-(1, '2025-11-01', '2025-11-15', 25, 450000, 67500, 'pagada', '2025-11-16'),
-(2, '2025-11-01', '2025-11-15', 18, 320000, 57600, 'pagada', '2025-11-16'),
-(3, '2025-11-01', '2025-11-15', 12, 180000, 21600, 'pendiente', NULL);
+(1, '2025-11-01', '2025-11-15', 25, 1350000, 202500, 'pagada', '2025-11-16'),
+(2, '2025-11-01', '2025-11-15', 18, 960000, 172800, 'pagada', '2025-11-16'),
+(3, '2025-11-01', '2025-11-15', 12, 540000, 64800, 'pendiente', NULL);
+
+-- ============================================
+-- VISTAS
+-- ============================================
 
 -- Vista para estadísticas rápidas
 CREATE VIEW vista_estadisticas_diarias AS
@@ -299,7 +307,7 @@ CREATE VIEW vista_comisiones_empleados AS
 SELECT
     e.id,
     e.nombre,
-    e.rut,
+    e.cedula,
     e.porcentaje_comision,
     COUNT(s.id) as total_servicios,
     COALESCE(SUM(s.monto_total), 0) as total_vendido,
@@ -309,6 +317,6 @@ LEFT JOIN servicios s ON e.id = s.id_empleado
     AND s.estado = 'completado'
     AND DATE(s.fecha) = CURDATE()
 WHERE e.estado = 'activo'
-GROUP BY e.id, e.nombre, e.rut, e.porcentaje_comision;
+GROUP BY e.id, e.nombre, e.cedula, e.porcentaje_comision;
 
 COMMIT;

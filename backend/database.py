@@ -4,7 +4,7 @@ from config import DB_CONFIG
 # Creamos el pool una sola vez (Singleton implícito)
 db_pool = mysql.connector.pooling.MySQLConnectionPool(
     pool_name="lavadero_pool",
-    pool_size=5,
+    pool_size=20,
     pool_reset_session=True,
     **DB_CONFIG
 )

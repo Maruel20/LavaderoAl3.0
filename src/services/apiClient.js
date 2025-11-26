@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import router from '@/router';
 // Configuración base
 const apiClient = axios.create({
     baseURL: 'http://localhost:8000/api',
