@@ -57,7 +57,7 @@ class EmpleadoRepository:
         try:
             query = """
                 UPDATE empleados 
-                SET nombre = %s, rut = %s, telefono = %s, email = %s, porcentaje_comision = %s
+                SET nombre = %s, cedula = %s, telefono = %s, email = %s, porcentaje_comision = %s
                 WHERE id = %s
             """
             values = (empleado.nombre, empleado.cedula, empleado.telefono, empleado.email, empleado.porcentaje_comision, id_empleado)
