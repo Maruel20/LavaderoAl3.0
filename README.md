@@ -299,7 +299,7 @@ Verificar que el frontend esté configurado en `backend/main.py` en el array `or
 
 El proyecto incluye múltiples opciones para desplegar en producción:
 
-### Opción 1: Docker (Recomendado)
+### Opción 1: Docker (Recomendado para VPS)
 
 ```bash
 # Configurar variables de entorno
@@ -313,7 +313,23 @@ docker-compose up -d --build
 docker-compose logs -f
 ```
 
-### Opción 2: VPS/Servidor Ubuntu
+📖 **Guías**: [Quick Start](QUICKSTART.md) | [Guía Completa](DOCKER_GUIDE.md)
+
+### Opción 2: Render.com (Recomendado para Cloud)
+
+```bash
+# Push a GitHub
+git push origin main
+
+# En Render Dashboard:
+# 1. New Blueprint Instance
+# 2. Conectar repositorio
+# 3. Apply (usa render.yaml automáticamente)
+```
+
+📖 **Guías**: [Quick Start](RENDER_QUICKSTART.md) | [Guía Completa](RENDER_GUIDE.md)
+
+### Opción 3: VPS/Servidor Ubuntu
 
 ```bash
 # Setup automático inicial
@@ -323,13 +339,13 @@ sudo bash scripts/setup-vps.sh
 bash scripts/deploy.sh
 ```
 
-### Opción 3: Servicios Cloud
+### Opción 4: Otros Servicios Cloud
 
-- **Render.com**: Deployment automático desde GitHub
 - **Railway.app**: `railway up`
 - **DigitalOcean**: App Platform con detección automática
+- **Vercel**: Frontend only
 
-**📚 Documentación Completa**: Ver [DEPLOYMENT.md](DEPLOYMENT.md) para instrucciones detalladas, configuración de SSL, backups automáticos y más.
+**📚 Documentación Completa**: Ver [DEPLOYMENT.md](DEPLOYMENT.md) para todas las opciones, configuración de SSL, backups automáticos y más.
 
 ## 🗺 Roadmap
 

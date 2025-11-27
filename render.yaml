@@ -1,0 +1,67 @@
+# Render.com Blueprint - Lavadero AL
+# Este archivo permite desplegar toda la aplicación con un solo click
+
+services:
+  # Backend API (FastAPI)
+  - type: web
+    name: lavadero-backend
+    runtime: python
+    plan: starter  # Cambiar a 'free' si quieres plan gratuito
+    region: oregon  # Cambiar según tu región preferida
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+    rootDir: backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: DB_HOST
+        fromDatabase:
+          name: lavadero-mysql
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: lavadero-mysql
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: lavadero-mysql
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: lavadero-mysql
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: lavadero-mysql
+          property: database
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENVIRONMENT
+        value: production
+    healthCheckPath: /
+
+  # Frontend (Vue + Nginx)
+  - type: web
+    name: lavadero-frontend
+    runtime: static
+    plan: free  # Static sites son gratis
+    region: oregon
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "20.19.0"
+      - key: VITE_API_URL
+        value: https://lavadero-backend.onrender.com/api
+
+# Base de datos MySQL
+databases:
+  - name: lavadero-mysql
+    databaseName: lavadero_al
+    user: lavadero_user
+    plan: starter  # $7/mes - Cambiar a plan más grande según necesidades
+    region: oregon
