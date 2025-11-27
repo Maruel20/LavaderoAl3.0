@@ -1,0 +1,55 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Databases
+*.sqlite
+*.db
+
+# Backups
+*.sql.backup
+backups/
+
+# Temp files
+tmp/
+temp/
+
+# Documentation (opcional, descomentar si no quieres incluir en la imagen)
+# docs/
+# *.md

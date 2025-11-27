@@ -27,6 +27,7 @@
 - [Uso](#uso)
 - [Documentación](#documentación)
 - [Estructura del Proyecto](#estructura-del-proyecto)
+- [Deployment](#deployment)
 - [Contribuir](#contribuir)
 - [Licencia](#licencia)
 - [Contacto](#contacto)
@@ -294,6 +295,42 @@ Verificar que el frontend esté configurado en `backend/main.py` en el array `or
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
 
+## 🚀 Deployment
+
+El proyecto incluye múltiples opciones para desplegar en producción:
+
+### Opción 1: Docker (Recomendado)
+
+```bash
+# Configurar variables de entorno
+cp .env.docker.example .env
+nano .env  # Editar con tus valores
+
+# Levantar servicios
+docker-compose up -d --build
+
+# Ver logs
+docker-compose logs -f
+```
+
+### Opción 2: VPS/Servidor Ubuntu
+
+```bash
+# Setup automático inicial
+sudo bash scripts/setup-vps.sh
+
+# Deployment de actualizaciones
+bash scripts/deploy.sh
+```
+
+### Opción 3: Servicios Cloud
+
+- **Render.com**: Deployment automático desde GitHub
+- **Railway.app**: `railway up`
+- **DigitalOcean**: App Platform con detección automática
+
+**📚 Documentación Completa**: Ver [DEPLOYMENT.md](DEPLOYMENT.md) para instrucciones detalladas, configuración de SSL, backups automáticos y más.
+
 ## 🗺 Roadmap
 
 - [ ] Implementación de JWT para autenticación
@@ -305,7 +342,7 @@ Verificar que el frontend esté configurado en `backend/main.py` en el array `or
 - [ ] Dashboard avanzado con BI
 - [ ] API pública con documentación OpenAPI
 - [ ] Tests unitarios y de integración
-- [ ] Deployment con Docker
+- [x] Deployment con Docker
 
 ## 📄 Licencia
 
