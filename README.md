@@ -50,7 +50,7 @@
 - Perfiles de usuario personalizables
 
 ### 👥 Administración de Empleados
-- Registro completo de empleados con RUT y contacto
+- Registro completo de empleados con Cedula y contacto
 - Control de estado (activo/inactivo)
 - Historial de liquidaciones por empleado
 - Cálculo automático de comisiones
