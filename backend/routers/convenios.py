@@ -55,14 +55,23 @@ def delete_convenio(id_convenio: int):
 @router.post("/api/convenios/{id_convenio}/vehiculos")
 def add_vehiculo_convenio(id_convenio: int, vehiculo: VehiculoConvenioCreate):
     try:
+        # Verificar que el convenio existe
+        convenio = repo.get_by_id(id_convenio)
+        if not convenio:
+            raise HTTPException(status_code=404, detail="Convenio no encontrado")
+
+        # Verificar que la placa no tenga un convenio activo
         if repo.check_vehiculo_activo(vehiculo.placa):
             raise HTTPException(status_code=400, detail="Esta placa ya tiene un convenio activo")
-        
+
         new_id = repo.add_vehiculo(id_convenio, vehiculo)
         return {"mensaje": "Vehículo agregado", "id": new_id}
-    except HTTPException: raise
+    except HTTPException:
+        raise
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error al agregar vehículo: {str(e)}")
 
 @router.get("/api/convenios/{id_convenio}/vehiculos")
 def get_vehiculos_convenio(id_convenio: int):

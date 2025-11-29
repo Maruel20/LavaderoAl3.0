@@ -111,10 +111,22 @@ class ConvenioUpdate(BaseModel):
 
 class VehiculoConvenioCreate(BaseModel):
     # id_convenio no es necesario en el body si se pasa por URL
-    placa: str
-    tipo_vehiculo: str
+    placa: str = Field(..., min_length=1, max_length=10)
+    tipo_vehiculo: str = Field(..., min_length=1)
     modelo: Optional[str] = None
     color: Optional[str] = None
+
+    @validator('placa')
+    def uppercase_placa(cls, v):
+        if not v or not v.strip():
+            raise ValueError('La placa no puede estar vacía')
+        return v.upper().replace(' ', '').replace('-', '')
+
+    @validator('tipo_vehiculo')
+    def validate_tipo_vehiculo(cls, v):
+        if not v or not v.strip():
+            raise ValueError('El tipo de vehículo no puede estar vacío')
+        return v.lower()
 
 # --- TARIFAS ---
 class TarifaUpdate(BaseModel):
