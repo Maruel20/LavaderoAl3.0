@@ -16,3 +16,6 @@ DB_CONFIG = {
 SECRET_KEY = os.getenv('SECRET_KEY', 'tu_clave_secreta_super_segura_cambiala_en_produccion_2024')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 horas
+
+# Configuración de CORS
+ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
