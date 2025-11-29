@@ -6,14 +6,14 @@ from backend.schemas import InsumoCreate, InsumoUpdate, MovimientoInventario
 router = APIRouter()
 repo = InventarioRepository()
 
-@router.get("/api/inventario")
+@router.get("/inventario")
 def get_inventario():
     try:
         return repo.get_all()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/inventario")
+@router.post("/inventario")
 def create_insumo(insumo: InsumoCreate):
     try:
         new_id = repo.create(insumo)
@@ -21,7 +21,7 @@ def create_insumo(insumo: InsumoCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/api/inventario/{id_insumo}")
+@router.put("/inventario/{id_insumo}")
 def update_insumo(id_insumo: int, insumo: InsumoUpdate):
     try:
         campos, vals = [], []
@@ -32,7 +32,7 @@ def update_insumo(id_insumo: int, insumo: InsumoUpdate):
         if insumo.unidad: campos.append("unidad=%s"); vals.append(insumo.unidad)
 
         if not campos: return {"mensaje": "Nada que actualizar"}
-        
+
         rows = repo.update_dynamic(id_insumo, campos, vals)
         if rows == 0: raise HTTPException(status_code=404, detail="Insumo no encontrado")
         return {"mensaje": "Insumo actualizado"}
@@ -40,7 +40,7 @@ def update_insumo(id_insumo: int, insumo: InsumoUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/inventario/{id_insumo}")
+@router.delete("/inventario/{id_insumo}")
 def delete_insumo(id_insumo: int):
     try:
         rows = repo.delete(id_insumo)
@@ -49,12 +49,12 @@ def delete_insumo(id_insumo: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/inventario/movimiento")
+@router.post("/inventario/movimiento")
 def registrar_movimiento(movimiento: MovimientoInventario):
     try:
         res = repo.get_stock(movimiento.id_insumo)
         if not res: raise HTTPException(status_code=404, detail="Insumo no existe")
-        
+
         stock_actual = res[0]
         nuevo_stock = stock_actual
 
@@ -63,7 +63,7 @@ def registrar_movimiento(movimiento: MovimientoInventario):
             nuevo_stock -= movimiento.cantidad
             if nuevo_stock < 0: raise HTTPException(status_code=400, detail="Stock insuficiente")
         elif movimiento.tipo_movimiento == 'ajuste': nuevo_stock = movimiento.cantidad
-            
+
         repo.registrar_movimiento(movimiento, nuevo_stock)
         return {"mensaje": "Movimiento registrado", "nuevo_stock": nuevo_stock}
     except HTTPException: raise

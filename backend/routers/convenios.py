@@ -6,14 +6,14 @@ from backend.schemas import ConvenioCreate, ConvenioUpdate, VehiculoConvenioCrea
 router = APIRouter()
 repo = ConvenioRepository()
 
-@router.get("/api/convenios")
+@router.get("/convenios")
 def get_convenios():
     try:
         return repo.get_all()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/convenios")
+@router.post("/convenios")
 def create_convenio(convenio: ConvenioCreate):
     try:
         new_id = repo.create(convenio)
@@ -21,7 +21,7 @@ def create_convenio(convenio: ConvenioCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/api/convenios/{id_convenio}")
+@router.put("/convenios/{id_convenio}")
 def update_convenio(id_convenio: int, convenio: ConvenioUpdate):
     try:
         campos, valores = [], []
@@ -35,15 +35,15 @@ def update_convenio(id_convenio: int, convenio: ConvenioUpdate):
         if convenio.fecha_inicio: campos.append("fecha_inicio=%s"); valores.append(convenio.fecha_inicio)
         if convenio.fecha_termino: campos.append("fecha_termino=%s"); valores.append(convenio.fecha_termino)
         if convenio.estado: campos.append("estado=%s"); valores.append(convenio.estado)
-        
+
         if not campos: return {"mensaje": "Sin cambios"}
-        
+
         repo.update_dynamic(id_convenio, campos, valores)
         return {"mensaje": "Convenio actualizado"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/convenios/{id_convenio}")
+@router.delete("/convenios/{id_convenio}")
 def delete_convenio(id_convenio: int):
     try:
         rows = repo.soft_delete(id_convenio)
@@ -52,7 +52,7 @@ def delete_convenio(id_convenio: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/convenios/{id_convenio}/vehiculos")
+@router.post("/convenios/{id_convenio}/vehiculos")
 def add_vehiculo_convenio(id_convenio: int, vehiculo: VehiculoConvenioCreate):
     try:
         # Verificar que el convenio existe
@@ -73,14 +73,14 @@ def add_vehiculo_convenio(id_convenio: int, vehiculo: VehiculoConvenioCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al agregar vehículo: {str(e)}")
 
-@router.get("/api/convenios/{id_convenio}/vehiculos")
+@router.get("/convenios/{id_convenio}/vehiculos")
 def get_vehiculos_convenio(id_convenio: int):
     try:
         return repo.get_vehiculos(id_convenio)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/convenios/vehiculos/{id_vehiculo}")
+@router.delete("/convenios/vehiculos/{id_vehiculo}")
 def remove_vehiculo_convenio(id_vehiculo: int):
     try:
         repo.remove_vehiculo(id_vehiculo)
@@ -88,7 +88,7 @@ def remove_vehiculo_convenio(id_vehiculo: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/convenios/validar/{placa}")
+@router.get("/convenios/validar/{placa}")
 def validar_convenio_placa(placa: str):
     """Valida si una placa pertenece a un convenio activo"""
     try:

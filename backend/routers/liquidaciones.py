@@ -7,26 +7,26 @@ router = APIRouter()
 liq_repo = LiquidacionRepository()
 emp_repo = EmpleadoRepository()
 
-@router.get("/api/liquidaciones")
+@router.get("/liquidaciones")
 def get_liquidaciones():
     try:
         return liq_repo.get_all()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/liquidaciones/{id_liquidacion}")
+@router.get("/liquidaciones/{id_liquidacion}")
 def get_liquidacion_detalle(id_liquidacion: int):
     try:
         liquidacion = liq_repo.get_by_id(id_liquidacion)
         if not liquidacion: raise HTTPException(status_code=404, detail="Liquidación no encontrada")
-        
+
         liquidacion['servicios'] = liq_repo.get_detalles(liquidacion['id_empleado'], liquidacion['periodo_inicio'], liquidacion['periodo_fin'])
         return liquidacion
     except HTTPException: raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/liquidaciones/calcular")
+@router.post("/liquidaciones/calcular")
 def calcular_liquidacion(liquidacion: LiquidacionCreate):
     try:
         if not emp_repo.get_by_id(liquidacion.id_empleado):
@@ -45,7 +45,7 @@ def calcular_liquidacion(liquidacion: LiquidacionCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/api/liquidaciones/{id_liquidacion}/pagar")
+@router.put("/liquidaciones/{id_liquidacion}/pagar")
 def marcar_liquidacion_pagada(id_liquidacion: int):
     try:
         rows = liq_repo.mark_paid(id_liquidacion)
@@ -54,7 +54,7 @@ def marcar_liquidacion_pagada(id_liquidacion: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/liquidaciones/{id_liquidacion}")
+@router.delete("/liquidaciones/{id_liquidacion}")
 def eliminar_liquidacion(id_liquidacion: int):
     try:
         liq = liq_repo.get_by_id(id_liquidacion)

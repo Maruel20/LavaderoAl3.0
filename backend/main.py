@@ -32,19 +32,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers que YA tienen "/api" en sus paths
-app.include_router(auth.router)
-app.include_router(empleados.router)
-app.include_router(servicios.router)
+# Definir prefijo global para mantener el orden
+api_prefix = "/api"
 
-# Estos routers también tienen "/api" en sus paths,
-# así que NO se debe usar prefix="/api"
-app.include_router(inventario.router)
-app.include_router(liquidaciones.router)
-app.include_router(convenios.router)
-app.include_router(tarifas.router)
-app.include_router(reportes.router)
-app.include_router(dashboard.router)
+app.include_router(auth.router, prefix=api_prefix, tags=["auth"])
+app.include_router(empleados.router, prefix=api_prefix, tags=["empleados"])
+app.include_router(servicios.router, prefix=api_prefix, tags=["servicios"])
+app.include_router(inventario.router, prefix=api_prefix, tags=["inventario"])
+app.include_router(liquidaciones.router, prefix=api_prefix, tags=["liquidaciones"])
+app.include_router(convenios.router, prefix=api_prefix, tags=["convenios"])
+app.include_router(tarifas.router, prefix=api_prefix, tags=["tarifas"])
+app.include_router(reportes.router, prefix=api_prefix, tags=["reportes"])
+app.include_router(dashboard.router, prefix=api_prefix, tags=["dashboard"])
 
 @app.get("/")
 def root():

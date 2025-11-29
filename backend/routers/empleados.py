@@ -6,14 +6,14 @@ from backend.schemas import EmpleadoCreate
 router = APIRouter()
 repo = EmpleadoRepository()
 
-@router.get("/api/empleados")
+@router.get("/empleados")
 def get_empleados():
     try:
         return repo.get_all()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/empleados")
+@router.post("/empleados")
 def create_empleado(empleado: EmpleadoCreate):
     try:
         if repo.get_by_cedula(empleado.cedula):
@@ -24,21 +24,21 @@ def create_empleado(empleado: EmpleadoCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/api/empleados/{id_empleado}")
+@router.put("/empleados/{id_empleado}")
 def update_empleado(id_empleado: int, empleado: EmpleadoCreate):
     try:
         existente = repo.get_by_cedula(empleado.cedula)
         if existente and existente['id'] != id_empleado:
             raise HTTPException(status_code=400, detail="Cédula duplicada")
-        
+
         rows = repo.update(id_empleado, empleado)
         if rows == 0: raise HTTPException(status_code=404, detail="Empleado no encontrado")
         return {"mensaje": "Empleado actualizado"}
     except HTTPException: raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-@router.put("/api/empleados/{id_empleado}/reactivar")
+
+@router.put("/empleados/{id_empleado}/reactivar")
 def reactivar_empleado(id_empleado: int):
     try:
         rows = repo.activate(id_empleado)
@@ -48,7 +48,7 @@ def reactivar_empleado(id_empleado: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/api/empleados/{id_empleado}")
+@router.delete("/empleados/{id_empleado}")
 def delete_empleado(id_empleado: int):
     try:
         rows = repo.soft_delete(id_empleado)
