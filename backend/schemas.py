@@ -87,13 +87,27 @@ class ConvenioCreate(BaseModel):
     nit_empresa: str = Field(..., min_length=6, max_length=15) # CORREGIDO: nit_empresa
     contacto: Optional[str] = None
     telefono: str
-    email: EmailStr
+    email: Optional[EmailStr] = None  # Cambiado a opcional
     direccion: Optional[str] = None
     tipo_descuento: str # porcentaje, monto_fijo
     valor_descuento: float
     fecha_inicio: date
     fecha_termino: Optional[date] = None
     observaciones: Optional[str] = None
+
+    @validator('fecha_termino', pre=True)
+    def empty_str_to_none(cls, v):
+        """Convierte strings vacíos a None para campos de fecha opcionales"""
+        if v == '' or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
+
+    @validator('email', pre=True)
+    def empty_email_to_none(cls, v):
+        """Convierte strings vacíos a None para email opcional"""
+        if v == '' or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
 class ConvenioUpdate(BaseModel):
     nombre_empresa: Optional[str] = None
@@ -108,6 +122,13 @@ class ConvenioUpdate(BaseModel):
     fecha_termino: Optional[date] = None
     estado: Optional[str] = None
     observaciones: Optional[str] = None
+
+    @validator('fecha_inicio', 'fecha_termino', pre=True)
+    def empty_str_to_none(cls, v):
+        """Convierte strings vacíos a None para campos de fecha opcionales"""
+        if v == '' or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
 class VehiculoConvenioCreate(BaseModel):
     # id_convenio no es necesario en el body si se pasa por URL
