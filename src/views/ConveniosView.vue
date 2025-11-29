@@ -152,8 +152,12 @@
                   <input type="text" class="form-control" v-model="form.telefono" required>
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label">Email Corporativo</label>
-                  <input type="email" class="form-control" v-model="form.email">
+                  <label class="form-label fw-bold">Email Corporativo *</label>
+                  <input type="email" class="form-control" v-model="form.email" required>
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label">Dirección</label>
+                  <input type="text" class="form-control" v-model="form.direccion" placeholder="Dirección de la empresa">
                 </div>
               </div>
 
@@ -330,6 +334,7 @@ const form = reactive({
   contacto: '',
   telefono: '',
   email: '',
+  direccion: '',
   tipo_descuento: 'porcentaje',
   valor_descuento: 0,
   fecha_inicio: '',
@@ -364,8 +369,8 @@ const conveniosFiltrados = computed(() => {
 // 5. Acciones (CRUD Convenio)
 const limpiarForm = () => {
   Object.assign(form, {
-    id: null, nombre_empresa: '', nit_empresa: '', contacto: '', telefono: '', 
-    email: '', tipo_descuento: 'porcentaje', valor_descuento: 0, 
+    id: null, nombre_empresa: '', nit_empresa: '', contacto: '', telefono: '',
+    email: '', direccion: '', tipo_descuento: 'porcentaje', valor_descuento: 0,
     fecha_inicio: new Date().toISOString().split('T')[0], fecha_termino: '', observaciones: ''
   })
 }
@@ -428,7 +433,21 @@ const guardarConvenio = async () => {
     cargarConvenios()
     
   } catch (err) {
-    alert("Error al guardar convenio: " + (err.response?.data?.detail || err.message))
+    console.error("Error completo:", err)
+    let errorMsg = "Error desconocido"
+
+    if (err.response?.data?.detail) {
+      // Si detail es un array (errores de validación de Pydantic)
+      if (Array.isArray(err.response.data.detail)) {
+        errorMsg = err.response.data.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n')
+      } else {
+        errorMsg = err.response.data.detail
+      }
+    } else if (err.message) {
+      errorMsg = err.message
+    }
+
+    alert("Error al guardar convenio:\n" + errorMsg)
   }
 }
 
