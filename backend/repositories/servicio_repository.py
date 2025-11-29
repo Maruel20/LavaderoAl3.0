@@ -67,12 +67,32 @@ class ServicioRepository:
     def update_dynamic(self, id_servicio: int, campos: list, vals: list):
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # 1. Definir los campos permitidos (whitelist)
+        columnas_permitidas = {
+            'placa', 'tipo_vehiculo', 'tipo_servicio', 'monto_total',
+            'monto_comision', 'id_empleado', 'id_convenio',
+            'es_convenio', 'descuento', 'observaciones', 'estado'
+        }
+
         try:
-            # AÃ±adimos el ID al final de la lista de valores para la clÃ¡usula WHERE
-            vals.append(id_servicio)
-            sql = f"UPDATE servicios SET {', '.join(campos)} WHERE id = %s"
-            
-            cursor.execute(sql, vals)
+            # 2. Filtrar campos inválidos
+            campos_seguros = []
+            valores_seguros = []
+
+            for campo, valor in zip(campos, vals):
+                if campo in columnas_permitidas:
+                    campos_seguros.append(f"{campo} = %s")
+                    valores_seguros.append(valor)
+
+            if not campos_seguros:
+                return 0  # No hay campos válidos para actualizar
+
+            # 3. Construir la SQL de forma segura
+            valores_seguros.append(id_servicio)
+            sql = f"UPDATE servicios SET {', '.join(campos_seguros)} WHERE id = %s"
+
+            cursor.execute(sql, tuple(valores_seguros))
             conn.commit()
             return cursor.rowcount
         except Exception as e:
