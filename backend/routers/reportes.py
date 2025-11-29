@@ -6,7 +6,7 @@ from backend.repositories import ReporteRepository
 router = APIRouter()
 repo = ReporteRepository()
 
-@router.get("/api/reportes/general")
+@router.get("/reportes/general")
 def get_reporte_general(fecha_inicio: Optional[str] = None, fecha_fin: Optional[str] = None):
     try:
         where = "WHERE s.fecha BETWEEN %s AND %s AND s.estado = 'completado'" if fecha_inicio else "WHERE MONTH(s.fecha) = MONTH(CURDATE()) AND YEAR(s.fecha) = YEAR(CURDATE()) AND s.estado = 'completado'"
@@ -15,7 +15,7 @@ def get_reporte_general(fecha_inicio: Optional[str] = None, fecha_fin: Optional[
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/reportes/empleados")
+@router.get("/reportes/empleados")
 def get_reporte_empleados(fecha_inicio: Optional[str] = None, fecha_fin: Optional[str] = None):
     try:
         where = "AND s.fecha BETWEEN %s AND %s" if fecha_inicio else "AND MONTH(s.fecha) = MONTH(CURDATE()) AND YEAR(s.fecha) = YEAR(CURDATE())"
@@ -24,14 +24,14 @@ def get_reporte_empleados(fecha_inicio: Optional[str] = None, fecha_fin: Optiona
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/reportes/servicios-diarios")
+@router.get("/reportes/servicios-diarios")
 def get_reporte_servicios_diarios(dias: int = 30):
     try:
         return repo.get_servicios_diarios(dias)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/reportes/convenios")
+@router.get("/reportes/convenios")
 def get_reporte_convenios(fecha_inicio: Optional[str] = None, fecha_fin: Optional[str] = None):
     try:
         where = "AND s.fecha BETWEEN %s AND %s" if fecha_inicio else "AND MONTH(s.fecha) = MONTH(CURDATE()) AND YEAR(s.fecha) = YEAR(CURDATE())"
@@ -40,14 +40,14 @@ def get_reporte_convenios(fecha_inicio: Optional[str] = None, fecha_fin: Optiona
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/reportes/inventario")
+@router.get("/reportes/inventario")
 def get_reporte_inventario():
     try:
         return repo.get_inventario()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/api/reportes/financiero")
+@router.get("/reportes/financiero")
 def get_reporte_financiero(anio: Optional[int] = None):
     try:
         from datetime import datetime

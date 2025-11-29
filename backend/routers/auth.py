@@ -13,7 +13,7 @@ from backend.schemas import LoginRequest, UsuarioCreate
 router = APIRouter()
 auth_repo = AuthRepository()
 
-@router.post("/api/login")
+@router.post("/login")
 def login(credentials: LoginRequest):
     try:
         user = auth_repo.get_by_username(credentials.username)
@@ -26,12 +26,12 @@ def login(credentials: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-@router.post("/api/register")
+@router.post("/register")
 def register(user_data: UsuarioCreate):
     try:
         if auth_repo.get_by_username(user_data.username):
             raise HTTPException(status_code=400, detail="El usuario ya existe")
-        
+
         hashed_password = get_password_hash(user_data.password)
         new_id = auth_repo.create_user(user_data, hashed_password)
         return {"message": "Usuario creado exitosamente", "id": new_id}
