@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from schemas import InsumoCreate, InsumoUpdate, MovimientoInventario
-from repositories import InventarioRepository
+
+from backend.repositories import InventarioRepository
+from backend.schemas import InsumoCreate, InsumoUpdate, MovimientoInventario
 
 router = APIRouter()
 repo = InventarioRepository()

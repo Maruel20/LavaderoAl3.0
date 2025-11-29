@@ -1,5 +1,6 @@
 from typing import Optional
-from strategies import DescuentoContext
+
+from backend.strategies import DescuentoContext
 
 class CalculoService:
     """

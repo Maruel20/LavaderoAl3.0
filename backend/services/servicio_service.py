@@ -1,8 +1,13 @@
 from fastapi import HTTPException
+
 # Importamos el repositorio de convenios
-from repositories import ServicioRepository, EmpleadoRepository, ConvenioRepository
-from services.calculo_service import CalculoService
-from schemas import ServicioCreate, ServicioUpdate
+from backend.repositories import (
+    ConvenioRepository,
+    EmpleadoRepository,
+    ServicioRepository,
+)
+from backend.services.calculo_service import CalculoService
+from backend.schemas import ServicioCreate, ServicioUpdate
 
 class ServicioService:
     def __init__(self):

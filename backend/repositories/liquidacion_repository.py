@@ -1,5 +1,5 @@
-from database import get_db_connection
-from schemas import LiquidacionCreate
+from backend.database import get_db_connection
+from backend.schemas import LiquidacionCreate
 
 class LiquidacionRepository:
     def get_all(self):

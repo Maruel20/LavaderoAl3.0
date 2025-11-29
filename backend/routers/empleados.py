@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from schemas import EmpleadoCreate
-from repositories import EmpleadoRepository
+
+from backend.repositories import EmpleadoRepository
+from backend.schemas import EmpleadoCreate
 
 router = APIRouter()
 repo = EmpleadoRepository()

@@ -309,7 +309,8 @@ src/
 │   └── servicios.js
 │
 ├── services/                  # SERVICIOS HTTP
-│   └── api.js                # Cliente Axios configurado
+│   ├── apiClient.js          # Cliente Axios configurado (baseURL desde VITE_API_URL)
+│   └── api.js                # Agregador de servicios específicos
 │
 ├── router/                    # ENRUTAMIENTO
 │   └── index.js              # Configuración de rutas
@@ -540,75 +541,105 @@ Precios por tipo de vehículo
 
 ### 1. Repository Pattern
 
-**Propósito:** Abstraer el acceso a datos
+**Propósito:** Abstraer el acceso a datos.
 
-**Implementación:**
+**Implementación:** Cada archivo en `backend/repositories/` contiene operaciones CRUD aisladas. Se manejan conexiones y cursores dentro de bloques `try/finally` para garantizar el cierre limpio.
 ```python
+# backend/repositories/empleado_repository.py
 class EmpleadoRepository:
-    def get_all(self): ...
-    def get_by_id(self, id): ...
-    def create(self, data): ...
-    def update(self, id, data): ...
-    def delete(self, id): ...
+    def get_all(self):
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT * FROM empleados WHERE estado = 'activo'")
+            return cursor.fetchall()
+        finally:
+            cursor.close()
+            conn.close()
 ```
 
 **Beneficios:**
-- Separación de responsabilidades
-- Fácil testing (mocking)
-- Cambio de BD sin afectar lógica
+- Separa acceso a datos de la lógica de negocio.
+- Facilita mocks de base de datos en pruebas.
+- Permite cambiar consultas o el motor de BD sin afectar servicios ni routers.
 
-### 2. Strategy Pattern
+### 2. Service Layer + Strategy Pattern
 
-**Propósito:** Algoritmos de descuento intercambiables
+**Propósito:** Orquestar casos de uso y aplicar descuentos intercambiables.
 
-**Implementación:**
+**Implementación:** La capa de servicios combina múltiples repositorios y la lógica de descuentos usa el patrón Strategy mediante `DescuentoContext`.
 ```python
-class DescuentoStrategy(ABC):
-    @abstractmethod
-    def calcular(self, monto): ...
+# backend/services/calculo_service.py
+def calcular_descuento_final(precio_lista, tipo_descuento, valor_descuento):
+    estrategia = DescuentoContext.obtener_estrategia(tipo_descuento)
+    valor = valor_descuento if valor_descuento else 0
+    return estrategia.calcular(precio_lista, valor)
 
-# Estrategias concretas
-class DescuentoPorcentaje(DescuentoStrategy): ...
-class DescuentoMontoFijo(DescuentoStrategy): ...
+# backend/services/servicio_service.py
+monto_descuento_final = 0.0
+if data.id_convenio:
+    convenio = self.convenio_repo.get_by_id(data.id_convenio)
+    if convenio and convenio['estado'] == 'activo':
+        monto_descuento_final = self.calculo_service.calcular_descuento_final(
+            precio_lista=data.monto_total,
+            tipo_descuento=convenio['tipo_descuento'],
+            valor_descuento=convenio['valor_descuento']
+        )
 ```
 
 **Beneficios:**
-- Fácil agregar nuevos tipos de descuento
-- Código más limpio (sin if/else)
-- Cumple Open/Closed Principle
+- Nuevos tipos de descuento se agregan sin modificar la lógica del servicio.
+- Reduce condicionales complejos y favorece el principio Open/Closed.
+- Los servicios mantienen la orquestación centralizada (validaciones, repositorios, reglas).
 
-### 3. Dependency Injection
+### 3. Pooling tipo Singleton (Conexión BD)
 
-**Propósito:** Inyección de dependencias
+**Propósito:** Reutilizar conexiones y evitar fallos de inicio cuando la BD está caída.
 
-**Implementación:**
+**Implementación:** `backend/database.py` inicializa un `MySQLConnectionPool` una sola vez y expone conexiones listas para usar.
 ```python
-# FastAPI inyecta dependencias automáticamente
-def verify_token(authorization: Optional[str] = Header(None)):
-    # Verifica token
-    return payload
+# backend/database.py
+_db_pool = None
 
-@router.get("/api/empleados")
-def get_empleados(user = Depends(verify_token)):
-    # user ya viene autenticado
-    ...
+def _get_db_pool():
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = mysql.connector.pooling.MySQLConnectionPool(
+            pool_name="lavadero_pool",
+            pool_size=20,
+            pool_reset_session=True,
+            **DB_CONFIG,
+        )
+    return _db_pool
 ```
 
-### 4. Singleton (Conexión BD)
+**Beneficios:**
+- Menos sobrecarga por creación de conexiones.
+- El pool se inicializa de forma lazy, evitando fallos en import si la BD está fuera de línea.
+- Centraliza parámetros como tamaño de pool y reset de sesión.
 
-**Propósito:** Una única instancia de conexión
+### 4. Composable Pattern en el Frontend
 
-**Implementación:**
-```python
-# database.py
-_connection = None
+**Propósito:** Compartir lógica reutilizable en la SPA.
 
-def get_db_connection():
-    global _connection
-    if _connection is None:
-        _connection = mysql.connector.connect(**DB_CONFIG)
-    return _connection
+**Implementación:** `src/composables/useApi.js` expone helpers para llamadas HTTP y manejo de errores que se consumen desde vistas y stores.
+```javascript
+// src/composables/useApi.js
+import apiClient from '@/services/apiClient';
+
+export function useApi() {
+  const request = async (config) => {
+    const response = await apiClient(config);
+    return response.data;
+  };
+  return { request };
+}
 ```
+
+**Beneficios:**
+- Evita duplicar configuraciones de Axios en componentes.
+- Facilita pruebas unitarias de lógica desacoplada de la UI.
+- Mejora la consistencia en el manejo de respuestas y errores.
 
 ---
 

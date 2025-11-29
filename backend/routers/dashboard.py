@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
-from routers.auth import verify_token
-from repositories import DashboardRepository
+from fastapi import APIRouter, Depends, HTTPException
+
+from backend.repositories import DashboardRepository
+from backend.routers.auth import verify_token
 
 router = APIRouter(dependencies=[Depends(verify_token)])
 repo = DashboardRepository()

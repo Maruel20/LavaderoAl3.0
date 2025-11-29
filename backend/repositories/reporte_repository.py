@@ -1,4 +1,4 @@
-from database import get_db_connection
+from backend.database import get_db_connection
 
 class ReporteRepository:
     def get_general(self, where_clause, params):

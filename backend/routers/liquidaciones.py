@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from schemas import LiquidacionCreate
-from repositories import LiquidacionRepository, EmpleadoRepository
+
+from backend.repositories import EmpleadoRepository, LiquidacionRepository
+from backend.schemas import LiquidacionCreate
 
 router = APIRouter()
 liq_repo = LiquidacionRepository()

@@ -1,5 +1,5 @@
-from database import get_db_connection
-from schemas import ConvenioCreate, VehiculoConvenioCreate
+from backend.database import get_db_connection
+from backend.schemas import ConvenioCreate, VehiculoConvenioCreate
 
 class ConvenioRepository:
     def get_all(self):

@@ -1,5 +1,5 @@
-from database import get_db_connection
-from schemas import InsumoCreate, MovimientoInventario
+from backend.database import get_db_connection
+from backend.schemas import InsumoCreate, MovimientoInventario
 
 class InventarioRepository:
     def get_all(self):
