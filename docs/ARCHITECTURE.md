@@ -28,6 +28,12 @@ Lavadero AL es un sistema web full-stack construido con arquitectura cliente-ser
 - **Estrategia de negocio:** Lógica de descuentos mediante Strategy Pattern
 - **Autenticación JWT:** Sistema de tokens para seguridad
 
+### Contexto colombiano
+
+- Identificadores pensados para **cédula de ciudadanía** y **NIT** en empleados, convenios y reportes
+- Montos expresados en **COP** (pesos colombianos) y formatos de dinero local
+- Compatible con flujos habituales en autolavados y convenios empresariales en Colombia
+
 ---
 
 ## Arquitectura de Alto Nivel
@@ -270,6 +276,22 @@ class DescuentoMontoFijo(DescuentoStrategy):
 - Facilita extensión
 - Reduce complejidad condicional
 
+### Inventario de archivos comentado (Backend)
+
+| Ruta | Rol en la arquitectura |
+| --- | --- |
+| `backend/main.py` | Punto de entrada FastAPI; arma la app, activa CORS y monta los routers. |
+| `backend/config.py` | Fuente única de configuración (credenciales MySQL, claves JWT) consumida por `database.py` y servicios. |
+| `backend/database.py` | Administra el pool de conexiones MySQL (singleton lazy) y expone `get_db_connection()`. |
+| `backend/schemas.py` | Modelos Pydantic que validan entradas/salidas de la API. |
+| `backend/auth_utils.py` | Creación y validación de tokens JWT usados en routers protegidos. |
+| `backend/routers/*.py` | Controladores REST por dominio (empleados, servicios, inventario, convenios, tarifas, reportes, dashboard, auth). |
+| `backend/services/servicio_service.py` | Orquesta creación de servicios, aplica descuentos, delega a repositorios (capa de negocio). |
+| `backend/services/calculo_service.py` | Cálculos de comisiones/ descuentos reutilizables en servicios y liquidaciones. |
+| `backend/repositories/*.py` | Operaciones CRUD directas sobre MySQL; implementan el patrón Repository. |
+| `backend/strategies/descuento_strategy.py` | Estrategias de descuento configurables (porcentaje, monto fijo) usadas por los servicios. |
+| `backend/schema.sql` | DDL que crea tablas y relaciones adaptadas a cédula/NIT y convenios empresariales. |
+
 ---
 
 ## Arquitectura del Frontend
@@ -309,7 +331,8 @@ src/
 │   └── servicios.js
 │
 ├── services/                  # SERVICIOS HTTP
-│   └── api.js                # Cliente Axios configurado
+│   ├── apiClient.js          # Cliente Axios configurado (baseURL desde VITE_API_URL)
+│   └── api.js                # Agregador de servicios específicos
 │
 ├── router/                    # ENRUTAMIENTO
 │   └── index.js              # Configuración de rutas
@@ -410,6 +433,21 @@ export const useAuthStore = defineStore('auth', {
 ```
 
 **Responsabilidad:** Estado compartido entre componentes
+
+### Inventario de archivos comentado (Frontend)
+
+| Ruta | Rol en la arquitectura |
+| --- | --- |
+| `src/main.js` | Arranca la SPA, registra router y store de Pinia. |
+| `src/router/index.js` | Define rutas protegidas por token y redirecciones al login. |
+| `src/stores/auth.js` | Estado global de autenticación, guarda token JWT en `localStorage`. |
+| `src/composables/useApi.js` | Factoriza llamadas HTTP y manejo de errores para composables. |
+| `src/services/apiClient.js` | Cliente Axios configurado con `VITE_API_URL` y headers comunes. |
+| `src/services/api.js` | Agregador que expone módulos de servicio por dominio (auth, convenios, empleados, etc.). |
+| `src/services/modules/*.service.js` | Llamadas HTTP específicas por dominio (empleados, servicios, convenios, inventario, tarifas, reportes, liquidaciones, dashboard). |
+| `src/views/*.vue` | Vistas principales de la SPA (login, dashboard y módulos de negocio). |
+| `src/components/` | Componentes reusables (navbar, formularios, tablas). |
+| `src/assets/` | Recursos estáticos (estilos, imágenes). |
 
 ---
 
@@ -540,75 +578,105 @@ Precios por tipo de vehículo
 
 ### 1. Repository Pattern
 
-**Propósito:** Abstraer el acceso a datos
+**Propósito:** Abstraer el acceso a datos.
 
-**Implementación:**
+**Implementación:** Cada archivo en `backend/repositories/` contiene operaciones CRUD aisladas. Se manejan conexiones y cursores dentro de bloques `try/finally` para garantizar el cierre limpio.
 ```python
+# backend/repositories/empleado_repository.py
 class EmpleadoRepository:
-    def get_all(self): ...
-    def get_by_id(self, id): ...
-    def create(self, data): ...
-    def update(self, id, data): ...
-    def delete(self, id): ...
+    def get_all(self):
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT * FROM empleados WHERE estado = 'activo'")
+            return cursor.fetchall()
+        finally:
+            cursor.close()
+            conn.close()
 ```
 
 **Beneficios:**
-- Separación de responsabilidades
-- Fácil testing (mocking)
-- Cambio de BD sin afectar lógica
+- Separa acceso a datos de la lógica de negocio.
+- Facilita mocks de base de datos en pruebas.
+- Permite cambiar consultas o el motor de BD sin afectar servicios ni routers.
 
-### 2. Strategy Pattern
+### 2. Service Layer + Strategy Pattern
 
-**Propósito:** Algoritmos de descuento intercambiables
+**Propósito:** Orquestar casos de uso y aplicar descuentos intercambiables.
 
-**Implementación:**
+**Implementación:** La capa de servicios combina múltiples repositorios y la lógica de descuentos usa el patrón Strategy mediante `DescuentoContext`.
 ```python
-class DescuentoStrategy(ABC):
-    @abstractmethod
-    def calcular(self, monto): ...
+# backend/services/calculo_service.py
+def calcular_descuento_final(precio_lista, tipo_descuento, valor_descuento):
+    estrategia = DescuentoContext.obtener_estrategia(tipo_descuento)
+    valor = valor_descuento if valor_descuento else 0
+    return estrategia.calcular(precio_lista, valor)
 
-# Estrategias concretas
-class DescuentoPorcentaje(DescuentoStrategy): ...
-class DescuentoMontoFijo(DescuentoStrategy): ...
+# backend/services/servicio_service.py
+monto_descuento_final = 0.0
+if data.id_convenio:
+    convenio = self.convenio_repo.get_by_id(data.id_convenio)
+    if convenio and convenio['estado'] == 'activo':
+        monto_descuento_final = self.calculo_service.calcular_descuento_final(
+            precio_lista=data.monto_total,
+            tipo_descuento=convenio['tipo_descuento'],
+            valor_descuento=convenio['valor_descuento']
+        )
 ```
 
 **Beneficios:**
-- Fácil agregar nuevos tipos de descuento
-- Código más limpio (sin if/else)
-- Cumple Open/Closed Principle
+- Nuevos tipos de descuento se agregan sin modificar la lógica del servicio.
+- Reduce condicionales complejos y favorece el principio Open/Closed.
+- Los servicios mantienen la orquestación centralizada (validaciones, repositorios, reglas).
 
-### 3. Dependency Injection
+### 3. Pooling tipo Singleton (Conexión BD)
 
-**Propósito:** Inyección de dependencias
+**Propósito:** Reutilizar conexiones y evitar fallos de inicio cuando la BD está caída.
 
-**Implementación:**
+**Implementación:** `backend/database.py` inicializa un `MySQLConnectionPool` una sola vez y expone conexiones listas para usar.
 ```python
-# FastAPI inyecta dependencias automáticamente
-def verify_token(authorization: Optional[str] = Header(None)):
-    # Verifica token
-    return payload
+# backend/database.py
+_db_pool = None
 
-@router.get("/api/empleados")
-def get_empleados(user = Depends(verify_token)):
-    # user ya viene autenticado
-    ...
+def _get_db_pool():
+    global _db_pool
+    if _db_pool is None:
+        _db_pool = mysql.connector.pooling.MySQLConnectionPool(
+            pool_name="lavadero_pool",
+            pool_size=20,
+            pool_reset_session=True,
+            **DB_CONFIG,
+        )
+    return _db_pool
 ```
 
-### 4. Singleton (Conexión BD)
+**Beneficios:**
+- Menos sobrecarga por creación de conexiones.
+- El pool se inicializa de forma lazy, evitando fallos en import si la BD está fuera de línea.
+- Centraliza parámetros como tamaño de pool y reset de sesión.
 
-**Propósito:** Una única instancia de conexión
+### 4. Composable Pattern en el Frontend
 
-**Implementación:**
-```python
-# database.py
-_connection = None
+**Propósito:** Compartir lógica reutilizable en la SPA.
 
-def get_db_connection():
-    global _connection
-    if _connection is None:
-        _connection = mysql.connector.connect(**DB_CONFIG)
-    return _connection
+**Implementación:** `src/composables/useApi.js` expone helpers para llamadas HTTP y manejo de errores que se consumen desde vistas y stores.
+```javascript
+// src/composables/useApi.js
+import apiClient from '@/services/apiClient';
+
+export function useApi() {
+  const request = async (config) => {
+    const response = await apiClient(config);
+    return response.data;
+  };
+  return { request };
+}
 ```
+
+**Beneficios:**
+- Evita duplicar configuraciones de Axios en componentes.
+- Facilita pruebas unitarias de lógica desacoplada de la UI.
+- Mejora la consistencia en el manejo de respuestas y errores.
 
 ---
 

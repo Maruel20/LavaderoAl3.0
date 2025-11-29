@@ -1,6 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth, empleados, servicios, inventario, liquidaciones, convenios, tarifas, reportes, dashboard
+
+from backend.routers import (
+    auth,
+    empleados,
+    servicios,
+    inventario,
+    liquidaciones,
+    convenios,
+    tarifas,
+    reportes,
+    dashboard,
+)
 
 app = FastAPI(title="Lavadero AL API")
 

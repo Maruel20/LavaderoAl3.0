@@ -1,6 +1,7 @@
 import mysql.connector
 from passlib.context import CryptContext
-from config import DB_CONFIG
+
+from backend.config import DB_CONFIG
 
 # Configuración directa del contexto para el script
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

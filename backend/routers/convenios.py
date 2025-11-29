@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from schemas import ConvenioCreate, ConvenioUpdate, VehiculoConvenioCreate
-from repositories import ConvenioRepository
+
+from backend.repositories import ConvenioRepository
+from backend.schemas import ConvenioCreate, ConvenioUpdate, VehiculoConvenioCreate
 
 router = APIRouter()
 repo = ConvenioRepository()

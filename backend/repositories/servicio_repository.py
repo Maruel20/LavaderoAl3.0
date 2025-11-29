@@ -1,5 +1,5 @@
-from database import get_db_connection
-from schemas import ServicioCreate
+from backend.database import get_db_connection
+from backend.schemas import ServicioCreate
 
 class ServicioRepository:
     def get_all(self, limit=100):

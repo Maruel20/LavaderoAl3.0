@@ -206,7 +206,7 @@
               <thead class="bg-light">
                 <tr>
                   <th>Empresa</th>
-                  <th>RUT</th>
+                  <th>NIT</th>
                   <th>Total Servicios</th>
                   <th>Total Facturado</th>
                   <th>Descuentos</th>

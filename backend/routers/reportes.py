@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional
-from repositories import ReporteRepository
+
+from backend.repositories import ReporteRepository
 
 router = APIRouter()
 repo = ReporteRepository()

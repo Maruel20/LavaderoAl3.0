@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from schemas import TarifaUpdate
-from repositories import TarifaRepository
+
+from backend.repositories import TarifaRepository
+from backend.schemas import TarifaUpdate
 
 router = APIRouter()
 repo = TarifaRepository()

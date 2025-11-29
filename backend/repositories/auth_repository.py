@@ -1,5 +1,5 @@
-from database import get_db_connection
-from schemas import UsuarioCreate
+from backend.database import get_db_connection
+from backend.schemas import UsuarioCreate
 
 class AuthRepository:
     def get_by_username(self, username: str):

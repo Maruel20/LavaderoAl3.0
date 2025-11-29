@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from schemas import ServicioCreate, ServicioUpdate
-from repositories import ServicioRepository, EmpleadoRepository
-from services.servicio_service import ServicioService
+
+from backend.schemas import ServicioCreate, ServicioUpdate
+from backend.services.servicio_service import ServicioService
 
 router = APIRouter()
 service = ServicioService()
