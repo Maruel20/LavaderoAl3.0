@@ -50,7 +50,7 @@
 - Perfiles de usuario personalizables
 
 ### 👥 Administración de Empleados
-- Registro completo de empleados con RUT y contacto
+- Registro completo de empleados con cédula/NIT y contacto
 - Control de estado (activo/inactivo)
 - Historial de liquidaciones por empleado
 - Cálculo automático de comisiones
@@ -145,8 +145,14 @@ mysql -u root -p < backend/schema.sql
 cd backend
 python -m venv venv
 source venv/bin/activate  # En Windows: venv\Scripts\activate
-pip install fastapi uvicorn mysql-connector-python pydantic
-uvicorn main:app --reload --port 8000
+pip install -r requirements.txt
+
+# Copia el archivo de ejemplo y ajusta tus datos
+cp .env.example .env
+cp backend/.env.example backend/.env
+
+# Ajusta tus credenciales en backend/.env si lo necesitas
+uvicorn backend.main:app --reload --port 8000
 ```
 
 ### 4. Configurar el Frontend
@@ -156,6 +162,8 @@ uvicorn main:app --reload --port 8000
 npm install
 npm run dev
 ```
+
+> Usa `.env.example` como base para crear tu `.env` en la raíz y apunta `VITE_API_URL` al backend.
 
 ### 5. Acceder a la aplicación
 
@@ -176,7 +184,7 @@ npm run dev
 
 - **[Guía de Instalación Completa](INSTALACION.md)** - Instrucciones detalladas paso a paso
 - **[Documentación de API](docs/API.md)** - Endpoints y ejemplos de uso
-- **[Arquitectura del Sistema](docs/ARCHITECTURE.md)** - Diseño y estructura técnica
+- **[Arquitectura del Sistema](docs/ARCHITECTURE.md)** - Diseño y estructura técnica (incluye patrones de diseño)
 - **[Manual de Usuario](docs/MANUAL_USUARIO.md)** - Guía para usuarios finales
 - **[Guía de Contribución](CONTRIBUTING.md)** - Cómo contribuir al proyecto
 
@@ -271,7 +279,7 @@ sudo systemctl status mysql  # Linux
 ### Puerto 8000 ya en uso
 ```bash
 # Cambiar el puerto en el comando uvicorn
-uvicorn main:app --reload --port 8001
+uvicorn backend.main:app --reload --port 8001
 ```
 
 ### Error de CORS

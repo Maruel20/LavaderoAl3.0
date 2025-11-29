@@ -1,5 +1,5 @@
-from database import get_db_connection
-from schemas import EmpleadoCreate
+from backend.database import get_db_connection
+from backend.schemas import EmpleadoCreate
 
 class EmpleadoRepository:
     def get_all(self):

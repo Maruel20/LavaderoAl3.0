@@ -63,9 +63,13 @@ Deberías ver las siguientes tablas:
    source venv/bin/activate
    ```
 
-3. Instala las dependencias:
+3. Instala las dependencias y prepara tus variables de entorno:
    ```bash
-   pip install fastapi uvicorn mysql-connector-python pydantic
+   pip install -r requirements.txt
+
+   # Copia el ejemplo y personaliza tus credenciales
+   cp backend/.env.example backend/.env
+   # Edita backend/.env con tus valores reales de MySQL y SECRET_KEY
    ```
 
 4. Verifica la configuración de la base de datos en `config.py`:
@@ -81,7 +85,7 @@ Deberías ver las siguientes tablas:
 
 5. Inicia el servidor backend:
    ```bash
-   uvicorn main:app --reload --port 8000
+   uvicorn backend.main:app --reload --port 8000
    ```
 
 6. Verifica que funcione accediendo a:
@@ -100,9 +104,10 @@ Deberías ver las siguientes tablas:
    npm install
    ```
 
-3. Verifica que la URL del API esté correcta en `src/services/api.js`:
-   ```javascript
-   const API_URL = 'http://localhost:8000/api';
+3. Copia el archivo de ejemplo del frontend y ajusta la URL del API (usada por `src/services/apiClient.js`):
+   ```bash
+   cp .env.example .env
+   # Asegúrate de que VITE_API_URL apunte a tu backend
    ```
 
 4. Inicia el servidor de desarrollo:
@@ -148,7 +153,8 @@ LavaderoAl/
 │   ├── views/            # Vistas de Vue
 │   ├── components/       # Componentes reutilizables
 │   ├── services/
-│   │   └── api.js        # Cliente HTTP
+│   │   ├── apiClient.js  # Cliente HTTP con Axios y baseURL desde .env
+│   │   └── api.js        # Agregador de módulos de servicio
 │   └── router/
 │       └── index.js      # Configuración de rutas
 └── package.json
@@ -205,7 +211,7 @@ El script `schema.sql` ya incluye datos de prueba:
 
 ### El frontend no se conecta al backend
 - Verifica que ambos servidores estén corriendo
-- Revisa la URL en `api.js`
+- Revisa que `VITE_API_URL` en tu `.env` apunte al backend
 - Abre la consola del navegador para ver errores de CORS
 
 ## 9. Desarrollo
@@ -215,7 +221,7 @@ El script `schema.sql` ya incluye datos de prueba:
 **Terminal 1 - Backend:**
 ```bash
 cd backend
-uvicorn main:app --reload --port 8000
+uvicorn backend.main:app --reload --port 8000
 ```
 
 **Terminal 2 - Frontend:**
@@ -232,7 +238,7 @@ http://localhost:8000/docs
 
 1. Cambiar las contraseñas por defecto
 2. Implementar autenticación JWT real (actualmente es simulada)
-3. Agregar validación de RUT chileno
+3. Agregar validación de cédula/NIT colombiana
 4. Implementar subida de imágenes de vehículos
 5. Agregar exportación de reportes a Excel/PDF
 6. Configurar backup automático de la base de datos

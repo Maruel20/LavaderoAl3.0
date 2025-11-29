@@ -1,8 +1,14 @@
 from fastapi import APIRouter, HTTPException, Header
-from schemas import LoginRequest, UsuarioCreate
-from auth_utils import verify_password, get_password_hash, create_access_token, decode_token
 from typing import Optional
-from repositories import AuthRepository
+
+from backend.auth_utils import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    decode_token,
+)
+from backend.repositories import AuthRepository
+from backend.schemas import LoginRequest, UsuarioCreate
 
 router = APIRouter()
 auth_repo = AuthRepository()

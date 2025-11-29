@@ -145,7 +145,7 @@ npm run dev
 
 # Backend
 cd backend
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 
 # Tests (cuando estén implementados)
 npm run test
