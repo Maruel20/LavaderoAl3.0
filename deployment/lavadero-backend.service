@@ -1,0 +1,28 @@
+[Unit]
+Description=Lavadero AL - FastAPI Backend Service
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=notify
+User=lavadero
+Group=lavadero
+WorkingDirectory=/home/lavadero/LavaderoAl3.0
+Environment="PATH=/home/lavadero/LavaderoAl3.0/venv/bin"
+EnvironmentFile=/home/lavadero/LavaderoAl3.0/.env
+ExecStart=/home/lavadero/LavaderoAl3.0/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 4
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+# Seguridad
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/lavadero/LavaderoAl3.0
+
+[Install]
+WantedBy=multi-user.target
