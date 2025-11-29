@@ -428,7 +428,28 @@ const guardarConvenio = async () => {
     cargarConvenios()
     
   } catch (err) {
-    alert("Error al guardar convenio: " + (err.response?.data?.detail || err.message))
+    console.error("Error completo al guardar convenio:", err)
+    let errorMsg = "Error desconocido"
+
+    if (err.response?.data) {
+      // Si el error viene del backend con data
+      if (typeof err.response.data === 'string') {
+        errorMsg = err.response.data
+      } else if (err.response.data.detail) {
+        // Manejar detail como string o array
+        if (Array.isArray(err.response.data.detail)) {
+          errorMsg = err.response.data.detail.map(e => e.msg || e).join(', ')
+        } else {
+          errorMsg = err.response.data.detail
+        }
+      } else {
+        errorMsg = JSON.stringify(err.response.data)
+      }
+    } else if (err.message) {
+      errorMsg = err.message
+    }
+
+    alert("Error al guardar convenio: " + errorMsg)
   }
 }
 
@@ -437,7 +458,11 @@ const eliminarConvenio = async (c) => {
   try {
     await api.deleteConvenio(c.id)
     cargarConvenios()
-  } catch(e) { alert("Error al eliminar") }
+  } catch(e) {
+    console.error("Error al eliminar:", e)
+    const errorMsg = e.response?.data?.detail || e.message || "Error desconocido"
+    alert("Error al eliminar: " + errorMsg)
+  }
 }
 
 // 6. Acciones (Vehículos)
@@ -460,8 +485,10 @@ const reactivarConvenio = async (c) => {
     await api.updateConvenio(c.id, { estado: 'activo' })
     alert("Convenio reactivado exitosamente")
     cargarConvenios()
-  } catch(e) { 
-    alert("Error al reactivar: " + (e.response?.data?.detail || e.message)) 
+  } catch(e) {
+    console.error("Error al reactivar:", e)
+    const errorMsg = e.response?.data?.detail || e.message || "Error desconocido"
+    alert("Error al reactivar: " + errorMsg)
   }
 }
 const agregarVehiculoIndividual = async () => {
@@ -473,7 +500,9 @@ const agregarVehiculoIndividual = async () => {
     vehiculosLista.value = await api.getVehiculosConvenio(convenioSeleccionado.value.id)
     cargarConvenios() // Actualizar contador
   } catch (err) {
-    alert("Error: " + (err.response?.data?.detail || "No se pudo agregar"))
+    console.error("Error al agregar vehículo:", err)
+    const errorMsg = err.response?.data?.detail || err.message || "No se pudo agregar"
+    alert("Error: " + errorMsg)
   }
 }
 
@@ -483,7 +512,11 @@ const eliminarVehiculo = async (idVehiculo) => {
     await api.removeVehiculoConvenio(idVehiculo)
     vehiculosLista.value = vehiculosLista.value.filter(v => v.id !== idVehiculo)
     cargarConvenios()
-  } catch(e) { alert("Error al quitar vehículo") }
+  } catch(e) {
+    console.error("Error al quitar vehículo:", e)
+    const errorMsg = e.response?.data?.detail || e.message || "Error desconocido"
+    alert("Error al quitar vehículo: " + errorMsg)
+  }
 }
 
 // Helpers
