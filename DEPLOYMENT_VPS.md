@@ -101,7 +101,7 @@ EXIT;
 Si tienes un archivo SQL con el esquema:
 
 ```bash
-mysql -u root -p lavadero_al < /ruta/a/tu/schema.sql
+mysql -u root -p lavadero_al < /backend/schema.sql
 ```
 
 ---

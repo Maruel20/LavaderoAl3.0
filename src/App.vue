@@ -1,22 +1,28 @@
 <template>
-  <div id="app">
+  <div id="app" class="d-flex flex-column min-vh-100">
     <Navbar v-if="!esRutaLogin" />
     
-    <router-view />
+    <div class="flex-grow-1">
+      <router-view />
+    </div>
+
+    <Footer v-if="!esRutaLogin" />
   </div>
 </template>
 
 <script>
-import Navbar from '@/components/Navbar.vue' // Asegúrate de crear este componente
+import Navbar from '@/components/Navbar.vue'
+import Footer from '@/components/Footer.vue' // Importar el Footer
 
 export default {
   name: 'App',
   components: {
-    Navbar
+    Navbar,
+    Footer // Registrar el componente
   },
   computed: {
     esRutaLogin() {
-      // Oculta el menú si la ruta es '/login'
+      // Oculta el menú y el footer si la ruta es '/login'
       return this.$route.path === '/login';
     }
   }
@@ -29,4 +35,3 @@ body {
   background-color: #f8f9fa; 
 }
 </style>
-
